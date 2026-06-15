@@ -184,6 +184,40 @@ v2 --ground (deferred):
   controls, authored no candidate. (Residual: still a Claude instance → shared-prior bias;
   v2 may rotate the judge seat to a non-participating model.)
 
+## 8.5 Member isolation & contamination control (from a live root-cause)
+
+*A `/council` review of this very design exposed a real failure, root-caused live. Recorded
+here as a hard requirement and implemented + verified in the reference `/council` command.*
+
+**The failure (VERIFIED):** a codex member's Form verdict reviewed a *different project* (the
+`ultrapowers-proof` UP-vs-SP benchmark) — foreign `risks`, on-topic `key_claims` (a *split*
+verdict). Evidence: the on-disk input prompt was clean; codex *echoed* an `ORIGINAL PROPOSAL`
+we never sent; the foreign text exists nowhere on local disk or in codex's local sessions;
+fresh session-id per exec. Root cause = **codex backend context-bleed** from a prior,
+structurally-identical `/council` run. `--ephemeral` blocks local session *writes*, not this
+*server-side* bleed. Intermittent; correlated with codex's cwd (a project-associated dir).
+
+**Architecture validation:** the stake-free judge + deterministic tally **contained** it (the
+poisoned member flipped to reject but could not swing the verdict). The controls caught their
+own poisoned member; the fixes make that proactive. This confirms and *deepens* design-review
+finding C3 — "self-contained + do not grep" is necessary but **not** sufficient: the member is
+not hermetic, and the leak is internal to the external CLI, not local file access.
+
+**Requirements (defense-in-depth):**
+
+| Layer | Mechanism | Verification |
+|---|---|---|
+| **Contamination gate** | drop a member verdict off-topic for THIS proposal: foreign hyphenated-jargon cluster >= 8 OR proposal-vocab coverage < 20%, checked before the tally | flags the **real** contaminated sample (28 foreign / 14% cov); passes 3 clean live runs |
+| **Per-proposal nonce** | unique token in every member prompt -> busts server-side cache/context collisions on the identical scaffold | applied |
+| **Isolated CLI profile** | codex runs with `CODEX_HOME` = temp dir (only `auth.json`; no config/projects/global-state) + neutral `mktemp` cwd | live: auth preserved, output clean |
+| **Unique tmp paths** | per-run `council_<id>_<runid>` files, not shared fixed paths | hygiene |
+
+**Carry into the plugin:** member-orchestration requirements for every mode that shells out to
+an external CLI — the gate runs at the judging step, isolation wraps every external member, the
+nonce is added to every member prompt. Gate thresholds are tunable per the eval (false-positive
+risk: a genuinely cross-domain proposal with heavy hyphenated jargon — mitigate by deriving the
+foreign-entity baseline from the proposal's own jargon density).
+
 ## 9. Eval hook (load-bearing, not optional)
 
 `eval/` implements [`../../eval-plan.md`](../../eval-plan.md) for **controls #1 and #2** in v1

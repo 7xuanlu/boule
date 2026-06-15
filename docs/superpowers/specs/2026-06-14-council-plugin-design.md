@@ -88,9 +88,11 @@ slash commands — mitigated by `/council help` and `argument-hint` frontmatter.
 entry and discrete user-only skills are ~zero standing cost, so this choice is justified on
 **UX mental-model** grounds, not token grounds.
 
-**Multi-line input (C5):** a markdown proposal as positional `$ARGUMENTS` is fragile
-(shell-quoting/readability). Convention: `--file <path>` reads the proposal from a file; bare
-`/council` with no args prompts the user to paste; large/multi-line proposals SHOULD use `--file`.
+**Multi-line input (C5):** a markdown proposal as positional `$ARGUMENTS` *may* be fragile
+(shell-quoting/readability). Provisional convention: `--file <path>` reads the proposal from a
+file; bare `/council` with no args prompts the user to paste. **`[impl-verify]`** whether `--file`
+is needed at all — if `$ARGUMENTS` already captures multi-line/pasted input cleanly, drop it (no
+surface that isn't needed).
 
 ## 5. Modes
 
@@ -306,7 +308,7 @@ v1 must **not** bake Workflow-specific assumptions into the prompt/control/eval 
 | C1 | Build controls/judge before the modes that consume them (TDD) | ✅ folded (§6 build order) |
 | C2 | Eval measures **all three** controls, not just #1/#2 | ✅ all (§9) |
 | C4 | Name the benchmarks; reuse MT-Bench labels (no new labeling) | ✅ folded (§9) |
-| C5 | `--file`/paste input convention for multi-line proposals | ✅ folded (§4) |
+| C5 | `--file`/paste input convention for multi-line proposals | ✅ folded (§4); `--file` necessity `[impl-verify]` |
 | C6 | Adversarial mode in v1 | ✅ folded (§5.3) |
 | C-bleed | Member isolation + contamination gate (live root-cause) | ✅ implemented + verified (§8.5) |
 
@@ -321,6 +323,8 @@ tally **voided** it (see §8.5) — the design catching its own contaminated mem
   hard-deny reads above cwd, or only soft-default to it? (§7)
 - `[impl-verify]` single-call counterbalancing sufficient for the eval's position-consistency
   metric, or does it need two re-judgings? (§6)
+- `[impl-verify]` is `--file` (C5) needed at all — does `/council`'s `$ARGUMENTS` capture
+  multi-line/pasted proposals cleanly? If yes, drop `--file` as unneeded surface (§4).
 - `[open]` exact `modes/*.md` ↔ `SKILL.md` dispatch mechanism in a plugin skill (read-on-demand
   pointer vs inline) — confirm against current plugin skill loading.
 - `[open]` MT-Bench human-judgment file availability in 2026 as eval ground truth (carried from

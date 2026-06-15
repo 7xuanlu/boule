@@ -15,3 +15,22 @@ export function lengthControlledWinRate(obs, iters = 500, lr = 0.01) {
   }
   return 1 / (1 + Math.exp(-b0))
 }
+
+// Control #3: how much MORE biased a single judge is than the stake-free panel.
+// Inputs are arrays of per-item bias scores (e.g. self-preference indicators in [0,1]).
+export function panelVsSingleBiasDelta(single, panel) {
+  const mean = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0
+  return mean(single) - mean(panel)
+}
+// Self-preference uplift (Wataoka 2024): win-rate when a judge rates its OWN output minus OTHERS'.
+// obs: array of { own: boolean, win: 0|1 }
+export function selfPreferenceUplift(obs) {
+  const rate = a => a.length ? a.reduce((s, o) => s + o.win, 0) / a.length : 0
+  return rate(obs.filter(o => o.own)) - rate(obs.filter(o => !o.own))
+}
+// Validity: fraction of items where the judge's verdict matches the reused human label.
+// obs: array of { judge, human }. The >0.80 bar is applied by the caller/report.
+export function humanAgreement(obs) {
+  if (obs.length === 0) return 1
+  return obs.filter(o => o.judge === o.human).length / obs.length
+}

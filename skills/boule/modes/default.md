@@ -8,7 +8,7 @@ export const meta = {
   description: 'Default poll council: 3 heterogeneous models answer once, stake-free judge synthesizes',
   phases: [
     { title: 'Poll',  detail: '3 models answer in parallel (independent, no cross-talk)' },
-    { title: 'Judge', detail: 'contamination filter + stake-free judge over counterbalanced candidates' },
+    { title: 'Judge', detail: 'contamination filter + stake-free judge over BOTH counterbalanced orderings (swap-and-average)' },
   ],
 }
 
@@ -27,6 +27,14 @@ function runNonce(proposal) {
 }
 function counterbalance(items) {
   return [items.slice(), items.slice().reverse()]
+}
+function reconcileSwap(a, b) {
+  const RANK = { approve: 0, 'approve-with-changes': 1, reject: 2, 'needs-more-info': 3 }
+  if (!a && !b) return null
+  if (!a || !b) return { ...(a || b), position_stable: false }
+  if (a.recommendation === b.recommendation) return { ...a, position_stable: true }
+  const winner = RANK[a.recommendation] >= RANK[b.recommendation] ? a : b
+  return { ...winner, confidence: 'low', position_stable: false }
 }
 function _foreignCount(txt, propLower) {
   let n = 0
@@ -133,21 +141,28 @@ if (live.length < 2) {
 
 phase('Judge')
 const anon = (v) => { const { model, ...rest } = v; return { ...rest, author: 'anonymous-candidate' } }
-const orderings = counterbalance(live.map(m => anon(m.verdict)))
-const ordered = orderings[NONCE.length % 2] // deterministic counterbalance pick (no Math.random)
-const judgePrompt =
+// True swap-and-average position-swap: judge BOTH counterbalanced orderings, then reconcile
+// (agree -> stable; disagree -> position-sensitive, conservative verdict at low confidence).
+const [fwd, rev] = counterbalance(live.map(m => anon(m.verdict)))
+const judgePrompt = (shown) =>
 `You are an impartial JUDGE. You authored NONE of these candidate answers — you have no position to defend. Decide the council's recommendation from the evidence only. Apply the bias controls: POSITION-SWAP (candidates are in a counterbalanced order — judge on content, not slot), VERBOSITY-NORM (do NOT reward length or polish; weigh substance only), STAKE-FREE (identities hidden; you wrote none of these). ${JUDGE_HINT}
 
 ORIGINAL PROPOSAL:
 ${proposal}
 
 ANONYMIZED CANDIDATES (counterbalanced order):
-${JSON.stringify(ordered, null, 2)}`
-const decision = await agent(judgePrompt, { label: 'judge', phase: 'Judge', schema: JUDGE_SCHEMA, agentType: 'boule-judge' })
+${JSON.stringify(shown, null, 2)}`
+const [decFwd, decRev] = await parallel([
+  () => agent(judgePrompt(fwd), { label: 'judge:fwd', phase: 'Judge', schema: JUDGE_SCHEMA, agentType: 'boule-judge' }),
+  () => agent(judgePrompt(rev), { label: 'judge:rev', phase: 'Judge', schema: JUDGE_SCHEMA, agentType: 'boule-judge' }),
+])
+const decision = reconcileSwap(decFwd, decRev)
+if (decision && decision.position_stable === false) log('judge verdict is position-sensitive (orderings disagreed) — flagged unstable, confidence capped')
 
 return {
   mode: 'default',
   recommendation: decision,
+  position_stable: decision && decision.position_stable,
   members: live.map(m => ({ id: m.id, model: m.model, verdict: m.verdict.verdict, confidence: m.verdict.confidence })),
   dropped,
 }

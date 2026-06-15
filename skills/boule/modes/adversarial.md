@@ -12,7 +12,7 @@ export const meta = {
     { title: 'Form',   detail: 'parallel independent verdicts (3 heterogeneous models, no cross-talk)' },
     { title: 'Attack', detail: 'each member refutes the OTHER TWO, targets anonymized (never self-judge)' },
     { title: 'Defend', detail: 'authors rebut attacks on their verdict, or concede (holds=false)' },
-    { title: 'Judge',  detail: 'deterministic tally + stake-free judge over anonymized, counterbalanced data' },
+    { title: 'Judge',  detail: 'deterministic tally + stake-free judge over BOTH anonymized orderings (swap-and-average)' },
   ],
 }
 
@@ -31,6 +31,14 @@ function runNonce(proposal) {
 }
 function counterbalance(items) {
   return [items.slice(), items.slice().reverse()]
+}
+function reconcileSwap(a, b) {
+  const RANK = { approve: 0, 'approve-with-changes': 1, reject: 2, 'needs-more-info': 3 }
+  if (!a && !b) return null
+  if (!a || !b) return { ...(a || b), position_stable: false }
+  if (a.recommendation === b.recommendation) return { ...a, position_stable: true }
+  const winner = RANK[a.recommendation] >= RANK[b.recommendation] ? a : b
+  return { ...winner, confidence: 'low', position_stable: false }
 }
 function _foreignCount(txt, propLower) {
   let n = 0
@@ -263,13 +271,12 @@ const degraded = live.length < 3
 const noPlurality = (() => { const c = Object.values(tally).sort((a, b) => b - a); return c.length > 1 && c[0] === c[1] })()
 
 // Stake-free judge: a FRESH subagent that produced NO verdict (no self to favor), reading the
-// ANONYMIZED verdicts (counterbalanced order — position-swap bias control) + the mechanical
-// tally + conceded flaws + the CONTESTED points (surviving attacks) + any self-revisions.
-// Routed to a stake-free boule-judge agent — NOT main-loop self-synthesis, which would re-add
-// self-enhancement bias (the main loop is also Claude and was a debater).
-const anonOrderings = counterbalance(live.map((m, i) => ({ id: `member-${i + 1}`, verdict: anon(m.verdict) })))
-const anonVerdicts = anonOrderings[NONCE.length % 2] // deterministic counterbalance pick (no Math.random)
-const judgePrompt =
+// ANONYMIZED verdicts (TRUE swap-and-average — judged in BOTH counterbalanced orderings, then
+// reconciled) + the mechanical tally + conceded flaws + the CONTESTED points (surviving
+// attacks) + any self-revisions. Routed to a stake-free boule-judge agent — NOT main-loop
+// self-synthesis, which would re-add self-enhancement bias (the main loop is also Claude and was a debater).
+const [fwdV, revV] = counterbalance(live.map((m, i) => ({ id: `member-${i + 1}`, verdict: anon(m.verdict) })))
+const judgePrompt = (shown) =>
 `You are an impartial JUDGE on an adversarial LLM council. You did NOT submit a verdict — you have no position to defend. Decide the council's recommendation from the evidence below. Apply the bias controls: POSITION-SWAP (the verdicts are in a counterbalanced order — judge on content, not slot), VERBOSITY-NORM (do NOT reward a verdict for being longer or better written; weigh substance only), STAKE-FREE (identities hidden; you wrote none of these). Anchor your decision to the VERDICT TALLY, the CONCEDED FLAWS (attacks the authors admitted), and the CONTESTED POINTS (attacks the authors rebutted — judge whether each rebuttal actually holds; do not assume it does). Weigh any VERDICT REVISIONS: a member who changed its own vote no longer fully backs its original tally position.
 
 CONFIDENCE RULES (apply strictly): use "high" ONLY if the tally is unanimous AND no conceded flaw is critical/severe AND all 3 members responded (not degraded). If the panel is DEGRADED (fewer than 3 members) OR there is NO PLURALITY (a tie for the top verdict), cap confidence at "medium" and say so in the rationale; do NOT force a single verdict — report the split and decide from conceded flaws + contested points. If any conceded flaw is critical, cap at "medium". ${JUDGE_HINT}
@@ -283,7 +290,7 @@ VERDICT TALLY (across ${live.length} members):
 ${JSON.stringify(tally, null, 2)}
 
 ANONYMIZED MEMBER VERDICTS (counterbalanced order):
-${JSON.stringify(anonVerdicts, null, 2)}
+${JSON.stringify(shown, null, 2)}
 
 CONCEDED FLAWS (real, author-admitted):
 ${JSON.stringify(concededFlaws, null, 2)}
@@ -294,9 +301,14 @@ ${JSON.stringify(contestedPoints, null, 2)}
 VERDICT REVISIONS (members who changed their own vote after conceding):
 ${JSON.stringify(revisions, null, 2)}`
 
-const judgment = await agent(judgePrompt, { label: 'judge:impartial', phase: 'Judge', schema: JUDGE_SCHEMA, agentType: 'boule-judge' })
+const [jFwd, jRev] = await parallel([
+  () => agent(judgePrompt(fwdV), { label: 'judge:fwd', phase: 'Judge', schema: JUDGE_SCHEMA, agentType: 'boule-judge' }),
+  () => agent(judgePrompt(revV), { label: 'judge:rev', phase: 'Judge', schema: JUDGE_SCHEMA, agentType: 'boule-judge' }),
+])
+const judgment = reconcileSwap(jFwd, jRev)
+const positionStable = judgment && judgment.position_stable
 
-log(`council complete: ${live.length} members, ${attacks.filter(Boolean).length} attacks, ${concededFlaws.length} conceded, ${contestedPoints.length} contested, ${revisions.length} revised${degraded ? ', DEGRADED' : ''}${noPlurality ? ', NO-PLURALITY' : ''}`)
+log(`council complete: ${live.length} members, ${attacks.filter(Boolean).length} attacks, ${concededFlaws.length} conceded, ${contestedPoints.length} contested, ${revisions.length} revised${degraded ? ', DEGRADED' : ''}${noPlurality ? ', NO-PLURALITY' : ''}${positionStable === false ? ', POSITION-UNSTABLE' : ''}`)
 
 return {
   mode: 'adversarial',
@@ -311,6 +323,7 @@ return {
   degraded,
   noPlurality,
   judgment,
+  position_stable: positionStable,
   dropped,
 }
 ```

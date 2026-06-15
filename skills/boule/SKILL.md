@@ -30,10 +30,10 @@ Usage:
 
 | Mode | ~Model calls | What it does |
 |---|---|---|
-| `default` | ~4 | Each of 3 models answers once (parallel), then a stake-free judge synthesizes. |
-| `consensus` | ~7 | 3 models propose, then peer-rank the anonymized answers, then a stake-free judge synthesizes. |
-| `adversarial` | ~13 | 3 models form verdicts → attack each other's (anonymized) → defend/concede → stake-free judge decides. |
+| `default` | ~5 | Each of 3 models answers once (parallel), then a stake-free judge synthesizes (judged in both orderings). |
+| `consensus` | ~8 | 3 models propose, then peer-rank the anonymized answers, then a stake-free judge synthesizes (both orderings). |
+| `adversarial` | ~14 | 3 models form verdicts → attack each other's (anonymized) → defend/concede → stake-free judge decides (both orderings). |
 
-Three judge-bias controls are applied at the judging step in every mode: **position-swap** (counterbalanced order), **verbosity-normalization** (ignore length/style), **stake-free judge** (synthesizer authored no candidate). See `reference/bias-controls.md`.
+Three judge-bias controls are applied at the judging step in every mode: **position-swap** (true swap-and-average — judge both counterbalanced orderings, reconcile), **verbosity-normalization** (ignore length/style), **stake-free judge** (synthesizer authored no candidate). See `reference/bias-controls.md`.
 
 > `--file <path>` is not implemented; it is gated on a live check that `$ARGUMENTS` captures multi-line pasted proposals. If multi-line works (current assumption), `--file` is unnecessary.

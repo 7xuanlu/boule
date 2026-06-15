@@ -62,9 +62,9 @@ Install from the `7xuanlu/claude-plugins` catalog marketplace:
 ## Usage
 
 ```shell
-/boule <proposal>               # default poll  (~4 model calls)
-/boule consensus <proposal>     # peer-ranked   (~7 model calls)
-/boule adversarial <proposal>   # form-attack-defend-judge  (~13 model calls)
+/boule <proposal>               # default poll  (~5 model calls)
+/boule consensus <proposal>     # peer-ranked   (~8 model calls)
+/boule adversarial <proposal>   # form-attack-defend-judge  (~14 model calls)
 /boule help                     # print the mode/cost table
 ```
 
@@ -72,11 +72,11 @@ Install from the `7xuanlu/claude-plugins` catalog marketplace:
 
 | Mode | ~Model calls | What it does |
 |---|---|---|
-| `default` | ~4 | 3 models answer in parallel, then a stake-free judge synthesizes. |
-| `consensus` | ~7 | 3 models propose, anonymized peer-rank, stake-free judge decides. |
-| `adversarial` | ~13 | Form → attack (anonymized) → defend/concede → stake-free judge. |
+| `default` | ~5 | 3 models answer in parallel, then a stake-free judge synthesizes (both orderings). |
+| `consensus` | ~8 | 3 models propose, anonymized peer-rank, stake-free judge decides (both orderings). |
+| `adversarial` | ~14 | Form → attack (anonymized) → defend/concede → stake-free judge (both orderings). |
 
-The three bias controls (position-swap, verbosity-normalization, stake-free judge) are applied at the judging step in every mode. See [`skills/boule/reference/bias-controls.md`](skills/boule/reference/bias-controls.md).
+The three bias controls (position-swap, verbosity-normalization, stake-free judge) are applied at the judging step in every mode. The judge call is run twice — once per counterbalanced ordering — and the two decisions are reconciled (swap-and-average), which is why each mode's count rose by one judge call. See [`skills/boule/reference/bias-controls.md`](skills/boule/reference/bias-controls.md).
 
 **Contamination gate:** external members (codex/gemini) run in an isolated profile (auth-only `CODEX_HOME` + neutral cwd) with a content-derived run nonce. A contamination gate (`isContaminated` in `lib/council-core.mjs`) drops any off-topic verdict — detected as context-bleed from a prior session — before tallying. Dropped verdicts are reported; only clean verdicts reach the judge.
 
@@ -112,13 +112,16 @@ The three controls are **adapted** from LLM-eval research (MT-Bench, AlpacaEval,
 where they were validated as large-N statistical procedures over labelled benchmarks. A
 single-shot council is a different setting, so the current implementations are bias-*aware*
 heuristics whose efficacy here is what the eval harness is built to measure — not yet a
-proven transfer. Two are honest about their current strength:
+proven transfer. Their current strength varies:
 
-- **Position-swap — partial; firm next step.** The judge currently sees **one**
-  counterbalanced ordering per run (deterministic by content nonce), which varies order
-  *across* runs but does not yet debias a *single* verdict. **Planned:** true
-  swap-and-average — judge both orderings and reconcile (tie when they disagree), matching
-  MT-Bench's method, so each individual recommendation is order-debiased.
+- **Position-swap — implemented (swap-and-average).** The judge now evaluates **both**
+  counterbalanced orderings every run, and the two decisions are reconciled
+  (`reconcileSwap` in `lib/council-core.mjs`): agree → kept; disagree → the verdict is
+  flagged position-unstable (`position_stable: false`), confidence is capped at low, and the
+  more conservative recommendation is taken. This matches MT-Bench's method, so each
+  individual recommendation is order-debiased — at the cost of one extra judge call per mode.
+  (Whether order-instability is rare or common in this single-shot setting is what the eval
+  harness measures.)
 - **Verbosity-normalization — prompt-level mitigation.** Implemented as a judge instruction
   to ignore length/polish, not AlpacaEval's statistical length-controlled regression. It
   reduces, but does not provably remove, the length confound.

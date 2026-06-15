@@ -48,6 +48,56 @@ test('counterbalance yields both orderings for a 2-item pair', () => {
   assert.deepEqual(orders[1], ['B', 'A'])
 })
 
+import { reconcileSwap } from '../lib/council-core.mjs'
+
+const DEC = (recommendation, confidence = 'high') =>
+  ({ recommendation, confidence, rationale: 'r', consensus: ['c'], dissent: [] })
+
+test('reconcileSwap: both orderings agree -> stable, recommendation + confidence kept', () => {
+  const r = reconcileSwap(DEC('approve', 'high'), DEC('approve', 'medium'))
+  assert.equal(r.position_stable, true)
+  assert.equal(r.recommendation, 'approve')
+  assert.equal(r.confidence, 'high') // forward decision preserved verbatim
+})
+test('reconcileSwap: disagree -> unstable, confidence downgraded to low', () => {
+  const r = reconcileSwap(DEC('approve', 'high'), DEC('reject', 'high'))
+  assert.equal(r.position_stable, false)
+  assert.equal(r.confidence, 'low')
+})
+test('reconcileSwap: mild disagree picks the more conservative verdict', () => {
+  const r = reconcileSwap(DEC('approve'), DEC('approve-with-changes'))
+  assert.equal(r.recommendation, 'approve-with-changes')
+  assert.equal(r.position_stable, false)
+})
+test('reconcileSwap: approve vs reject -> reject (fail-closed, never greenlights)', () => {
+  assert.equal(reconcileSwap(DEC('approve'), DEC('reject')).recommendation, 'reject')
+  assert.equal(reconcileSwap(DEC('reject'), DEC('approve')).recommendation, 'reject')
+})
+test('reconcileSwap: any flip involving needs-more-info -> needs-more-info (top of ladder)', () => {
+  assert.equal(reconcileSwap(DEC('reject'), DEC('needs-more-info')).recommendation, 'needs-more-info')
+  assert.equal(reconcileSwap(DEC('approve'), DEC('needs-more-info')).recommendation, 'needs-more-info')
+})
+test('reconcileSwap: disagree keeps the WINNING decision intact (rationale/dissent match the chosen recommendation)', () => {
+  const approve = { recommendation: 'approve', confidence: 'high', rationale: 'looks good', consensus: ['ship'], dissent: [] }
+  const reject  = { recommendation: 'reject',  confidence: 'high', rationale: 'fatal flaw', consensus: [], dissent: ['blocker'] }
+  const rb = reconcileSwap(approve, reject) // b (reversed) is more conservative -> b wins
+  assert.equal(rb.recommendation, 'reject')
+  assert.equal(rb.rationale, 'fatal flaw')      // must NOT be 'looks good'
+  assert.deepEqual(rb.dissent, ['blocker'])
+  const ra = reconcileSwap(reject, approve) // a (forward) is more conservative -> a wins
+  assert.equal(ra.recommendation, 'reject')
+  assert.equal(ra.rationale, 'fatal flaw')
+})
+test('reconcileSwap: one ordering missing -> present decision, position_stable false (unverified)', () => {
+  const r = reconcileSwap(DEC('approve', 'high'), null)
+  assert.equal(r.recommendation, 'approve')
+  assert.equal(r.position_stable, false)
+  const r2 = reconcileSwap(null, DEC('reject', 'medium')) // null-first path
+  assert.equal(r2.recommendation, 'reject')
+  assert.equal(r2.position_stable, false)
+  assert.equal(reconcileSwap(null, null), null)
+})
+
 import { codexCmd, geminiCmd } from '../lib/council-core.mjs'
 
 test('codexCmd isolates CODEX_HOME + cwd and preserves auth', () => {

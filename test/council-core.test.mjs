@@ -33,3 +33,17 @@ test('gate passes an on-topic verdict', () => {
     unknowns: ['which published eval proves the bias controls'] }
   assert.equal(isContaminated(clean, PROPOSAL), false)
 })
+
+import { runNonce, counterbalance } from '../lib/council-core.mjs'
+
+test('runNonce is deterministic per proposal, differs across proposals', () => {
+  assert.equal(runNonce('alpha'), runNonce('alpha'))
+  assert.notEqual(runNonce('alpha'), runNonce('beta'))
+  assert.match(runNonce('alpha'), /^council-[a-z0-9]+$/)
+})
+test('counterbalance yields both orderings for a 2-item pair', () => {
+  const orders = counterbalance(['A', 'B'])
+  assert.equal(orders.length, 2)
+  assert.deepEqual(orders[0], ['A', 'B'])
+  assert.deepEqual(orders[1], ['B', 'A'])
+})

@@ -2,12 +2,9 @@
 
 **A lean, research-backed multi-LLM council with the judge-bias controls that no other open-source council implements.**
 
-> Status: **design / docs-first** (pre-implementation). This repo currently holds the
-> competitive landscape, an adversarially-verified gap analysis, a verified research
-> bibliography, and an evaluation plan. Implementation follows the spec in `docs/`.
+> Status: **v1 implemented** — plugin scaffold, one `/council` skill with three modes (default / consensus / adversarial), the three judge-bias controls, member-isolation + contamination gate, and a node-tested core (`node --test`) with an eval harness (`node eval/run.mjs --smoke`). Live-session smokes (plugin install, `/council` invocation, the multi-line `$ARGUMENTS` → `--file` decision) are pending before first release.
 >
-> Name (`council-rigor`) is an **ad-hoc placeholder** — rename freely. It appears only in
-> this title, the GitHub repo name, and the folder name; all prose refers to "this project".
+> Name (`council-rigor`) is still rename-able — it appears only in this title, the GitHub repo name, and the folder name; all prose refers to "this project".
 
 ## Why this exists
 

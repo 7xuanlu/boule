@@ -13,3 +13,17 @@ test('contaminated member is dropped; clean members synthesized', () => {
   assert.deepEqual(dropped, ['codex'])
   assert.equal(live.length, 2)
 })
+
+test('two contaminated members leave <2 live -> degrade trigger', () => {
+  const proposal = 'should the council ship as a single skill with modes'
+  const bleed = { key_claims: ['x'], risks: ['U-shape crossover', 'A-sonnet B-parity', 'N-power slope', 'Meter-B re-witness', 'capture-head undefined', 'B-full arm'], unknowns: ['SP-coordinator'] }
+  const raw = [
+    { id: 'claude', verdict: { key_claims: ['single skill keeps context low'], risks: ['mode sprawl'], unknowns: [] } },
+    { id: 'gemini', verdict: bleed },
+    { id: 'codex',  verdict: bleed },
+  ]
+  const { live, dropped } = runCouncilCore(proposal, raw)
+  assert.equal(live.length, 1)
+  assert.deepEqual(dropped, ['gemini', 'codex'])
+  // a mode would abort here because live.length < 2
+})

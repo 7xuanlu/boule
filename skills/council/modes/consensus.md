@@ -173,7 +173,7 @@ for (const r of rankings.filter(Boolean)) {
 // ── Phase: Judge (stake-free synth over the ranked, anonymized set) ──
 phase('Judge')
 const judgePrompt =
-`You are an impartial JUDGE. You authored NONE of these candidates — no position to defend. Synthesize the council's recommendation from the anonymized candidate verdicts and the peer-rank tally. Apply the bias controls: POSITION-SWAP (rankings already counterbalanced — judge on content), VERBOSITY-NORM (do NOT reward length or polish; substance only), STAKE-FREE (identities hidden; you wrote none). ${JUDGE_HINT}
+`You are an impartial JUDGE. You authored NONE of these candidates — no position to defend. Synthesize the council's recommendation from the anonymized candidate verdicts and the peer-rank tally. Apply the bias controls: POSITION-SWAP (peer rankings were collected under counterbalanced ordering and the Borda tally is order-independent — judge on content, not slot), VERBOSITY-NORM (do NOT reward length or polish; substance only), STAKE-FREE (identities hidden; you wrote none). ${JUDGE_HINT}
 
 ORIGINAL PROPOSAL:
 ${proposal}

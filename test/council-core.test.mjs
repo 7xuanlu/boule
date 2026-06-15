@@ -47,3 +47,19 @@ test('counterbalance yields both orderings for a 2-item pair', () => {
   assert.deepEqual(orders[0], ['A', 'B'])
   assert.deepEqual(orders[1], ['B', 'A'])
 })
+
+import { codexCmd, geminiCmd } from '../lib/council-core.mjs'
+
+test('codexCmd isolates CODEX_HOME + cwd and preserves auth', () => {
+  const c = codexCmd('gpt-5.5', '/t/in.txt', '/t/out.txt')
+  assert.match(c, /CODEX_HOME="\$CH"/)
+  assert.match(c, /cp "\$HOME\/\.codex\/auth\.json"/)
+  assert.match(c, /mktemp -d/)
+  assert.match(c, /-s read-only/)
+  assert.match(c, /model_reasoning_effort=xhigh/)
+  assert.match(c, /--ephemeral/)
+})
+test('geminiCmd runs read-only plan mode', () => {
+  const g = geminiCmd('gemini-3.1-pro-preview', '/t/in.txt')
+  assert.match(g, /--approval-mode plan/)
+})

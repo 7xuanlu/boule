@@ -11,8 +11,8 @@ function bodyOf(src, name) {
   return m ? m[0].replace(/^export /, '') : null
 }
 test('mode scripts embed canonical core functions unchanged', () => {
-  for (const f of readdirSync('skills/council/modes').filter(x => x.endsWith('.md'))) {
-    const md = readFileSync(join('skills/council/modes', f), 'utf8')
+  for (const f of readdirSync('skills/boule/modes').filter(x => x.endsWith('.md'))) {
+    const md = readFileSync(join('skills/boule/modes', f), 'utf8')
     for (const fn of FUNCS) {
       const canon = bodyOf(lib, fn)
       assert.ok(canon, `lib missing ${fn}`)

@@ -1,13 +1,13 @@
 ---
-name: council
+name: boule
 description: Multi-LLM council with debiased judging. Modes - default (poll), consensus, adversarial.
 disable-model-invocation: true
 argument-hint: "[default|consensus|adversarial|help] <proposal>"
 ---
 <!--
 PLATFORM SPIKE (Task 1 Step 3) — DEFERRED to a live Claude Code session (cannot run in a background/subagent context):
-1. Install plugin locally; confirm /council appears and is user-only (no model auto-trigger).
-2. /council help with a multi-line pasted proposal — confirm $ARGUMENTS captures full multi-line text.
+1. Install plugin locally; confirm /boule appears and is user-only (no model auto-trigger).
+2. /boule help with a multi-line pasted proposal — confirm $ARGUMENTS captures full multi-line text.
    If yes -> --file is unnecessary (current assumption). If no -> add --file handling (Task 8).
 3. Confirm modes/default.md is loaded only when dispatched (on-demand), not at session start.
 Build proceeds on the assumption that $ARGUMENTS captures multi-line (so no --file). Re-verify live.
@@ -23,10 +23,10 @@ Parse the FIRST whitespace-delimited token of "$ARGUMENTS" as the MODE; the rema
 ## Help
 
 Usage:
-- `/council <proposal>` — default poll mode.
-- `/council consensus <proposal>` — anonymized peer-ranked consensus.
-- `/council adversarial <proposal>` — form → attack → defend → judge.
-- `/council help` — print this table.
+- `/boule <proposal>` — default poll mode.
+- `/boule consensus <proposal>` — anonymized peer-ranked consensus.
+- `/boule adversarial <proposal>` — form → attack → defend → judge.
+- `/boule help` — print this table.
 
 | Mode | ~Model calls | What it does |
 |---|---|---|

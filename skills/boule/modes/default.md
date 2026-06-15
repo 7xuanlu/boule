@@ -1,10 +1,10 @@
-# Council — default (poll) mode
+# Boule — default (poll) mode
 
 Invoke the `Workflow` tool with the script below, passing the user's PROPOSAL as `args` (a plain string). The slash-command invocation is the opt-in for multi-agent orchestration — run it directly; do not ask again.
 
 ```js
 export const meta = {
-  name: 'council-default',
+  name: 'boule-default',
   description: 'Default poll council: 3 heterogeneous models answer once, stake-free judge synthesizes',
   phases: [
     { title: 'Poll',  detail: '3 models answer in parallel (independent, no cross-talk)' },
@@ -117,7 +117,7 @@ ${externalPrompt}`
 phase('Poll')
 const polled = await parallel(members.map(m => async () => {
   const v = m.cli
-    ? await agent(conduitPrompt(m, formPrompt(m)), { label: m.id, phase: 'Poll', schema: VERDICT_SCHEMA, model: 'haiku', agentType: 'council-conduit' })
+    ? await agent(conduitPrompt(m, formPrompt(m)), { label: m.id, phase: 'Poll', schema: VERDICT_SCHEMA, model: 'haiku', agentType: 'boule-conduit' })
     : await agent(formPrompt(m), { label: m.id, phase: 'Poll', schema: VERDICT_SCHEMA })
   return { ...m, verdict: v }
 }))
@@ -143,7 +143,7 @@ ${proposal}
 
 ANONYMIZED CANDIDATES (counterbalanced order):
 ${JSON.stringify(ordered, null, 2)}`
-const decision = await agent(judgePrompt, { label: 'judge', phase: 'Judge', schema: JUDGE_SCHEMA, agentType: 'council-judge' })
+const decision = await agent(judgePrompt, { label: 'judge', phase: 'Judge', schema: JUDGE_SCHEMA, agentType: 'boule-judge' })
 
 return {
   mode: 'default',

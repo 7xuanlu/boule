@@ -1,4 +1,4 @@
-# Council — adversarial mode
+# Boule — adversarial mode
 
 Invoke the `Workflow` tool with the script below, passing the user's PROPOSAL as `args` (a plain string, or `{ proposal, lenses?: string[] }`). The slash-command invocation is the opt-in for multi-agent orchestration — run it directly; do not ask again.
 
@@ -6,7 +6,7 @@ Three independent reasoners from three different labs (Claude main-loop, OpenAI 
 
 ```js
 export const meta = {
-  name: 'council-adversarial',
+  name: 'boule-adversarial',
   description: 'Adversarial multi-lab council: form → attack → defend → judge (cross-model, anonymized, stake-free judge)',
   phases: [
     { title: 'Form',   detail: 'parallel independent verdicts (3 heterogeneous models, no cross-talk)' },
@@ -161,11 +161,11 @@ ${externalPrompt}`
 }
 
 // Dispatch a member: claude runs directly (inherits main-loop Opus); codex/gemini run via the
-// council-conduit agent on haiku (the conduit is a clerical relay — the real reasoning is the
+// boule-conduit agent on haiku (the conduit is a clerical relay — the real reasoning is the
 // external model inside the CLI, which the wrapper tier cannot improve).
 const dispatch = (m, externalPrompt, schema, label, phaseName) =>
   m.cli
-    ? agent(conduitPrompt(m, externalPrompt), { label, phase: phaseName, schema, model: 'haiku', agentType: 'council-conduit' })
+    ? agent(conduitPrompt(m, externalPrompt), { label, phase: phaseName, schema, model: 'haiku', agentType: 'boule-conduit' })
     : agent(externalPrompt, { label, phase: phaseName, schema })
 
 // Strip identity from a verdict before any attacker or the judge sees it (anonymization).
@@ -265,7 +265,7 @@ const noPlurality = (() => { const c = Object.values(tally).sort((a, b) => b - a
 // Stake-free judge: a FRESH subagent that produced NO verdict (no self to favor), reading the
 // ANONYMIZED verdicts (counterbalanced order — position-swap bias control) + the mechanical
 // tally + conceded flaws + the CONTESTED points (surviving attacks) + any self-revisions.
-// Routed to a stake-free council-judge agent — NOT main-loop self-synthesis, which would re-add
+// Routed to a stake-free boule-judge agent — NOT main-loop self-synthesis, which would re-add
 // self-enhancement bias (the main loop is also Claude and was a debater).
 const anonOrderings = counterbalance(live.map((m, i) => ({ id: `member-${i + 1}`, verdict: anon(m.verdict) })))
 const anonVerdicts = anonOrderings[NONCE.length % 2] // deterministic counterbalance pick (no Math.random)
@@ -294,7 +294,7 @@ ${JSON.stringify(contestedPoints, null, 2)}
 VERDICT REVISIONS (members who changed their own vote after conceding):
 ${JSON.stringify(revisions, null, 2)}`
 
-const judgment = await agent(judgePrompt, { label: 'judge:impartial', phase: 'Judge', schema: JUDGE_SCHEMA, agentType: 'council-judge' })
+const judgment = await agent(judgePrompt, { label: 'judge:impartial', phase: 'Judge', schema: JUDGE_SCHEMA, agentType: 'boule-judge' })
 
 log(`council complete: ${live.length} members, ${attacks.filter(Boolean).length} attacks, ${concededFlaws.length} conceded, ${contestedPoints.length} contested, ${revisions.length} revised${degraded ? ', DEGRADED' : ''}${noPlurality ? ', NO-PLURALITY' : ''}`)
 

@@ -1,5 +1,5 @@
 ---
-name: council-judge
+name: boule-judge
 description: Stake-free synthesizer/judge. Authored no candidate; applies the three bias controls.
 ---
 

@@ -1,10 +1,8 @@
-# council-rigor
+# boule
 
 **A lean, research-backed multi-LLM council with the judge-bias controls that no other open-source council implements.**
 
 > Status: **v1 implemented** — plugin scaffold, one `/boule` skill with three modes (default / consensus / adversarial), the three judge-bias controls, member-isolation + contamination gate, and a node-tested core (`node --test`) with an eval harness (`node eval/run.mjs --smoke`). Live-session smokes (plugin install, `/boule` invocation, the multi-line `$ARGUMENTS` → `--file` decision) are pending before first release.
->
-> Name (`council-rigor`) is still rename-able — it appears only in this title, the GitHub repo name, and the folder name; all prose refers to "this project".
 
 ## Why this exists
 
@@ -55,8 +53,8 @@ and human-agreement %.
 This repo is the plugin itself. Add the marketplace and install in one pass:
 
 ```shell
-/plugin marketplace add 7xuanlu/council-rigor
-/plugin install boule@council-rigor
+/plugin marketplace add 7xuanlu/boule
+/plugin install boule@boule
 ```
 
 `/boule` is a single user-invoked skill (not model-triggered). Claude will not call it automatically; you invoke it explicitly.

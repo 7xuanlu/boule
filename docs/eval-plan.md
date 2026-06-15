@@ -68,4 +68,4 @@ Publish the harness + seeds so the numbers are reproducible — the published ev
 
 - `[UNKNOWN]` exact human-judgment files still distributed for MT-Bench in 2026 — confirm availability before committing to it as ground truth.
 - `[INFERRED]` length-confound probe set must be authored; no off-the-shelf version verified.
-- Scope v1 to Controls #1 and #2 (the field-wide 0/6 gaps) — they carry the differentiation; #3 is table-stakes and can follow.
+- v1 measures **all three** controls (decision C2): #1/#2 are the field-wide 0/6 gaps that carry the differentiation; #3 (stake-free) is table-stakes but is measured too — panel-vs-single bias delta + self-preference uplift — so the "three research-backed controls" claim is fully evidenced.

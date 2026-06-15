@@ -3,8 +3,8 @@
 *Status: design-approved (brainstorming → spec). Date: 2026-06-14.*
 *Supersedes nothing; implements the wedge from [`../../findings.md`](../../findings.md) +
 [`../../eval-plan.md`](../../eval-plan.md). Reviewed by an adversarial 3-lab council
-(claude/codex/gemini), verdict **approve-with-changes** — all 5 conceded changes folded in
-(see Decision Log §13).*
+(claude/codex/gemini) twice — design, then design+build-plan — both **approve-with-changes**;
+all conceded changes folded (see Decision Log §13).*
 
 ## 1. Summary
 
@@ -14,21 +14,21 @@ orchestration pattern (that pattern is now a crowded category — see `landscape
 
 The plugin ships **one user-invoked skill** with **modes** (git-style), the three
 LLM-as-judge bias controls applied at the judging step of every mode, and a **published
-eval** that proves the controls change outcomes. v1 ships the two cheap modes; the
-expensive adversarial flow and cross-host portability are explicit non-goals (§2).
+eval** that proves the controls change outcomes. v1 ships three modes (cheap poll,
+consensus, and the adversarial flow); only cross-host portability is an explicit non-goal (§2).
 
 ## 2. Goals / non-goals
 
 **Goals (v1)**
 - One zero-standing-cost entry: `/council`, a user-only skill.
-- Two modes: **default** (cheap parallel poll) and **consensus** (anonymized peer-rank).
+- Three modes: **default** (cheap parallel poll), **consensus** (anonymized peer-rank), and
+  **adversarial** (form→attack→defend→judge — the existing command, ported in).
 - The three bias controls — **position-swap, verbosity-norm, stake-free judge** — applied
   to the judging/synthesis step of both modes, with **tested defaults** (not raw switches).
-- A runnable **eval harness** (`eval/`) per `eval-plan.md`, proving controls #1 and #2 help.
+- A runnable **eval harness** (`eval/`) per `eval-plan.md`, proving **all three** controls help
+  (C2 — measure #1, #2, and #3).
 
 **Non-goals (deferred, recorded so intent survives)**
-- ❌ **Adversarial mode** (form→attack→defend→judge, ~13 calls) — v2; port the existing
-  command in as a third mode, no new command.
 - ❌ **Cross-host portability / codex or gemini as the *invoker*** — v2+. Requires extracting
   orchestration out of the Workflow tool into a standalone `council` runner (§12). v1 keeps
   the **WHAT** (controls, prompts, eval) host-agnostic so v2 is a *re-host, not a rewrite*.
@@ -54,13 +54,13 @@ council/ (plugin)
     modes/
       default.md        poll flow         ┐ loaded ONLY when that mode runs
       consensus.md      peer-rank flow     ┘
-      (adversarial.md = v2)
+      adversarial.md    form→attack→defend→judge
     reference/
       bias-controls.md  the 3 controls' mechanics + citations (loaded at the judging step)
       grounding.md      §7 worktree-scoping + egress policy
       prompts/          member/judge prompt templates (host-agnostic — see §12)
   agents/
-    conduit.md          codex/gemini CLI relay; READ-ONLY; cwd-pinned (§7)
+    conduit.md          codex/gemini CLI relay; READ-ONLY; isolated profile (§8.5)
     judge.md            stake-free synthesizer/judge
   eval/                 load-bearing proof (NOT loaded at runtime)
     harness/ datasets/ results/
@@ -76,7 +76,9 @@ dominated by model-call **tokens**, reported to the user per §10.
 ```
 /council <proposal>                  default = parallel poll        (~4 calls)
 /council consensus <proposal>        anonymized peer-rank synth     (~7 calls)
+/council adversarial <proposal>      form→attack→defend→judge       (~13 calls)
 /council help                        list modes + cost + flags
+/council <mode> --file <path>        read proposal from a file (large / multi-line)
 /council consensus <proposal> --lenses a,b,c   per-member focus hints (not stances)
 ```
 
@@ -85,6 +87,10 @@ recorded** (council change #3): one entry sacrifices per-command autocomplete vs
 slash commands — mitigated by `/council help` and `argument-hint` frontmatter. Both a single
 entry and discrete user-only skills are ~zero standing cost, so this choice is justified on
 **UX mental-model** grounds, not token grounds.
+
+**Multi-line input (C5):** a markdown proposal as positional `$ARGUMENTS` is fragile
+(shell-quoting/readability). Convention: `--file <path>` reads the proposal from a file; bare
+`/council` with no args prompts the user to paste; large/multi-line proposals SHOULD use `--file`.
 
 ## 5. Modes
 
@@ -116,7 +122,19 @@ proposal → propose (3, parallel, no cross-talk)                         [3 cal
 This is the **showcase mode**: the ranking step is exactly where position + verbosity bias
 do the most damage in the literature, so it is where the controls are most visible.
 
-### 5.3 Member model routing (carried from the existing command)
+### 5.3 adversarial — form→attack→defend→judge (~13 calls)
+
+```
+proposal → FORM:   3 independent verdicts (parallel, no cross-talk)        [3 calls]
+         → ATTACK: each member refutes the other two, targets anonymized   [6 calls]
+         → DEFEND: each author rebuts attacks on its verdict, or concedes   [<=3 calls]
+         → JUDGE:  deterministic tally + STAKE-FREE judge over anon data    [1 call]
+```
+Ported verbatim from the existing `~/.claude/commands/council.md` (battle-tested, daily-used;
+carries the §8.5 contamination controls). Heaviest tier, explicit opt-in. Shipping it in v1 is
+why the product *is* genuinely an "adversarial council" — resolving the MVP-naming concern (C6).
+
+### 5.4 Member model routing (carried from the existing command)
 - `claude` member = main-loop (reasons itself, inherits session model).
 - `codex` / `gemini` members = their CLIs, relayed by a **read-only** conduit agent run on a
   cheap tier (the relay is clerical; the reasoning is the external model). `[VERIFIED:
@@ -143,6 +161,10 @@ measured, first-mover"*, **not** *"novel"* — these are commodity techniques wh
 call; v1 default implementation = **one judge call seeing a counterbalanced ordering** (keeps
 the §5 call counts honest). `[impl-verify: confirm single-call counterbalancing is sufficient
 for the eval's position-consistency metric]`
+
+**Build order (C1):** build `reference/bias-controls.md` + the stake-free judge **before** the
+modes that call them — debiased judging is the differentiator under test, so it is specified-
+first (TDD), not retrofitted onto a working poll.
 
 ## 7. Worktree handling (v1: self-contained only; `--ground` deferred to v2)
 
@@ -220,11 +242,18 @@ foreign-entity baseline from the proposal's own jargon density).
 
 ## 9. Eval hook (load-bearing, not optional)
 
-`eval/` implements [`../../eval-plan.md`](../../eval-plan.md) for **controls #1 and #2** in v1
-(the field-wide 0/6 gaps). For each control: run a mode **with the control off vs on** over
-the same inputs, report the delta on a literature-validated metric (position-consistency,
-length-controlled win-rate, human-agreement %). This published eval — not the ~3 features of
-code — is the durable moat.
+`eval/` implements [`../../eval-plan.md`](../../eval-plan.md) for **all three controls** in v1
+(C2). Each is measured **with it off vs on** over the same inputs, reporting the delta on a
+**named, literature-validated** metric (C4 — no invented metrics, no new human labeling):
+
+| Control | Metric | Source / labels |
+|---|---|---|
+| #1 position-swap | position-consistency · repetition-stability · preference-fairness | Shi 2024 |
+| #2 verbosity-norm | length-controlled win-rate (GLM; counterfactual at Δlen=0) | Dubois 2024 |
+| #3 stake-free judge | panel-vs-single bias delta · self-preference uplift | Verga 2024 (PoLL); Wataoka 2024 |
+| validity | human-agreement % (bar **>80%**) | **reuse MT-Bench public human/GPT-4 labels — no new labeling** |
+
+This published eval — not the ~3 features of code — is the durable moat.
 
 ## 10. Report / UI render
 
@@ -271,13 +300,20 @@ v1 must **not** bake Workflow-specific assumptions into the prompt/control/eval 
 | D2 | Modes via `$1`, not separate commands/tools | ✅ accepted; UX tradeoff recorded (§4) |
 | D3 | Cheap poll default; expensive flows opt-in | ✅ accepted (strongest decision) |
 | D4 | Bias controls at every mode's judging step | ✅ accepted; eval-backed, tested defaults (§6, §9) |
-| D5 | v1 = default + consensus; defer MCP/adversarial | ✅ accepted |
+| D5 | v1 modes = default + consensus + **adversarial** (C6); defer MCP/portability | ✅ revised — adversarial daily-used, resolves MVP-naming |
 | D6 | Cheapest packaging = user-only skill | ✅ accepted; framed as standing-context footprint (§3) |
 | D7 | Resolve member cwd to invoking worktree | ✅ accepted in principle; **deferred to v2** — v1 = self-contained proposals only (§7) |
+| C1 | Build controls/judge before the modes that consume them (TDD) | ✅ folded (§6 build order) |
+| C2 | Eval measures **all three** controls, not just #1/#2 | ✅ all (§9) |
+| C4 | Name the benchmarks; reuse MT-Bench labels (no new labeling) | ✅ folded (§9) |
+| C5 | `--file`/paste input convention for multi-line proposals | ✅ folded (§4) |
+| C6 | Adversarial mode in v1 | ✅ folded (§5.3) |
+| C-bleed | Member isolation + contamination gate (live root-cause) | ✅ implemented + verified (§8.5) |
 
-**Council verdict:** approve-with-changes (medium), 3/3 unanimous, full panel. Changes #1–#5
-folded into §3, §7, §4, §6/§9, §10/§3 respectively. Off-target attacks (empirical-benchmark
-strawman, dollar-billing misread of D6) were discounted by the stake-free judge.
+**Council verdicts:** both reviews returned approve-with-changes (medium), 3/3, full panel.
+Review 1 (design) → changes #1–#5. Review 2 (design+build-plan) → changes C1–C6. In review 2 a
+codex member was poisoned by backend context-bleed and flipped to reject; the stake-free judge +
+tally **voided** it (see §8.5) — the design catching its own contaminated member.
 
 ## 14. Open questions / impl-verification flags
 

@@ -20,4 +20,20 @@ Parse the FIRST whitespace-delimited token of "$ARGUMENTS" as the MODE; the rema
 - `adversarial` -> read and follow `modes/adversarial.md`.
 - anything else (or empty) -> treat the whole of "$ARGUMENTS" as the proposal and follow `modes/default.md`.
 
-Modes: `default` ~4 calls; `consensus` ~7 calls; `adversarial` ~13 calls.
+## Help
+
+Usage:
+- `/council <proposal>` — default poll mode.
+- `/council consensus <proposal>` — anonymized peer-ranked consensus.
+- `/council adversarial <proposal>` — form → attack → defend → judge.
+- `/council help` — print this table.
+
+| Mode | ~Model calls | What it does |
+|---|---|---|
+| `default` | ~4 | Each of 3 models answers once (parallel), then a stake-free judge synthesizes. |
+| `consensus` | ~7 | 3 models propose, then peer-rank the anonymized answers, then a stake-free judge synthesizes. |
+| `adversarial` | ~13 | 3 models form verdicts → attack each other's (anonymized) → defend/concede → stake-free judge decides. |
+
+Three judge-bias controls are applied at the judging step in every mode: **position-swap** (counterbalanced order), **verbosity-normalization** (ignore length/style), **stake-free judge** (synthesizer authored no candidate). See `reference/bias-controls.md`.
+
+> `--file <path>` is not implemented; it is gated on a live check that `$ARGUMENTS` captures multi-line pasted proposals. If multi-line works (current assumption), `--file` is unnecessary.

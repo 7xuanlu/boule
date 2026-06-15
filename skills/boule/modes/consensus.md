@@ -9,7 +9,7 @@ export const meta = {
   phases: [
     { title: 'Propose', detail: '3 models give independent verdicts (parallel)' },
     { title: 'Rank',    detail: 'each member peer-ranks the anonymized answers (counterbalanced order)' },
-    { title: 'Judge',   detail: 'Borda tally + stake-free judge over the ranked, anonymized set' },
+    { title: 'Judge',   detail: 'Borda tally + stake-free judge over BOTH anonymized orderings (swap-and-average)' },
   ],
 }
 
@@ -28,6 +28,14 @@ function runNonce(proposal) {
 }
 function counterbalance(items) {
   return [items.slice(), items.slice().reverse()]
+}
+function reconcileSwap(a, b) {
+  const RANK = { approve: 0, 'approve-with-changes': 1, reject: 2, 'needs-more-info': 3 }
+  if (!a && !b) return null
+  if (!a || !b) return { ...(a || b), position_stable: false }
+  if (a.recommendation === b.recommendation) return { ...a, position_stable: true }
+  const winner = RANK[a.recommendation] >= RANK[b.recommendation] ? a : b
+  return { ...winner, confidence: 'low', position_stable: false }
 }
 function _foreignCount(txt, propLower) {
   let n = 0
@@ -172,22 +180,31 @@ for (const r of rankings.filter(Boolean)) {
 
 // ── Phase: Judge (stake-free synth over the ranked, anonymized set) ──
 phase('Judge')
-const judgePrompt =
+// True swap-and-average: judge BOTH counterbalanced candidate orderings, then reconcile. The
+// Borda tally is order-independent (stable labels), so it is identical for both orderings.
+const [fwdC, revC] = counterbalance(candidates)
+const judgePrompt = (shown) =>
 `You are an impartial JUDGE. You authored NONE of these candidates — no position to defend. Synthesize the council's recommendation from the anonymized candidate verdicts and the peer-rank tally. Apply the bias controls: POSITION-SWAP (peer rankings were collected under counterbalanced ordering and the Borda tally is order-independent — judge on content, not slot), VERBOSITY-NORM (do NOT reward length or polish; substance only), STAKE-FREE (identities hidden; you wrote none). ${JUDGE_HINT}
 
 ORIGINAL PROPOSAL:
 ${proposal}
 
 ANONYMIZED CANDIDATES:
-${JSON.stringify(candidates, null, 2)}
+${JSON.stringify(shown, null, 2)}
 
 PEER-RANK TALLY (Borda points, higher = ranked better by peers):
 ${JSON.stringify(borda, null, 2)}`
-const decision = await agent(judgePrompt, { label: 'judge', phase: 'Judge', schema: JUDGE_SCHEMA, agentType: 'boule-judge' })
+const [decFwd, decRev] = await parallel([
+  () => agent(judgePrompt(fwdC), { label: 'judge:fwd', phase: 'Judge', schema: JUDGE_SCHEMA, agentType: 'boule-judge' }),
+  () => agent(judgePrompt(revC), { label: 'judge:rev', phase: 'Judge', schema: JUDGE_SCHEMA, agentType: 'boule-judge' }),
+])
+const decision = reconcileSwap(decFwd, decRev)
+if (decision && decision.position_stable === false) log('judge verdict is position-sensitive (orderings disagreed) — flagged unstable, confidence capped')
 
 return {
   mode: 'consensus',
   recommendation: decision,
+  position_stable: decision && decision.position_stable,
   borda,
   members: live.map(m => ({ id: m.id, model: m.model, verdict: m.verdict.verdict, confidence: m.verdict.confidence })),
   dropped,

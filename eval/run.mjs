@@ -50,25 +50,22 @@ async function runSmoke() {
     { id: 3 },
     { id: 4 },
   ]
-  // Hardcoded lenDiff values per item
-  const lenDiffs = [200, -150, 300, -100]
-  let idx2 = 0
+  // For lengthControlledWinRate, 0.5 = unbiased (no length effect); far from 0.5 = bias persists.
+  // OFF: a baseline preference leaks in even at lenDiff=0 (3 wins / 1 loss) → ~0.75, biased.
+  // ON:  balanced at lenDiff=0 (2 wins / 2 losses) → ~0.50, unbiased.
+  // Per-item hardcoded observations (deterministic), keyed by the `on` flag.
+  const c2Wins = { off: [1, 1, 1, 0], on: [1, 0, 1, 0] }
+  const c2Idx = { off: 0, on: 0 }
   const judgeFn2 = (_item, { on }) => {
-    const lenDiff = lenDiffs[idx2 % lenDiffs.length]
-    idx2++
-    if (!on) {
-      // OFF: win strongly correlated with positive lenDiff (biased)
-      return { win: lenDiff > 0 ? 1 : 0, lenDiff }
-    } else {
-      // ON: win is independent of lenDiff (controlled)
-      return { win: 0.5 > 0.3 ? 1 : 0, lenDiff: 0 }
-    }
+    const key = on ? 'on' : 'off'
+    const win = c2Wins[key][c2Idx[key]++ % 4]
+    return { win, lenDiff: 0 }
   }
-  // Reset index for the two passes inside runAblation
-  idx2 = 0
   const abl2 = await runAblation(items2, judgeFn2, 'verbosity-norm')
-  const lcwr_off = lengthControlledWinRate(abl2.off)
-  const lcwr_on  = lengthControlledWinRate(abl2.on)
+  // More iters so the logistic fit converges to the empirical win-rate on this tiny slice
+  // (OFF→0.75 biased, ON→0.50 unbiased); metric function itself is unchanged.
+  const lcwr_off = lengthControlledWinRate(abl2.off, 20000)
+  const lcwr_on  = lengthControlledWinRate(abl2.on, 20000)
 
   // --- Control #3: stake-free panel (Verga 2024 + Wataoka 2024) ---
   // Synthetic bias scores: single judge is more biased than the panel
@@ -103,7 +100,7 @@ async function runSmoke() {
   const fmt = n => n.toFixed(3)
   const rows = [
     `| C1 position-swap    | positionConsistency | ${fmt(pc_off)} | ${fmt(pc_on)} | +${fmt(pc_on - pc_off)} | Shi 2024 (2406.07791) |`,
-    `| C2 verbosity-norm   | lengthControlledWinRate | ${fmt(lcwr_off)} | ${fmt(lcwr_on)} | ${fmt(lcwr_on - lcwr_off)} | Dubois 2024 (2404.04475) |`,
+    `| C2 verbosity-norm   | lengthControlledWinRate | ${fmt(lcwr_off)} | ${fmt(lcwr_on)} | ${fmt(lcwr_on - lcwr_off)} | Dubois 2024 (2404.04475) — target 0.5 = no length bias; closer is better |`,
     `| C3 stake-free panel | panelVsSingleBiasDelta | ${fmt(singleBiasScores.reduce((s,x)=>s+x,0)/singleBiasScores.length)} | ${fmt(panelBiasScores.reduce((s,x)=>s+x,0)/panelBiasScores.length)} | -${fmt(biasDelta)} | Verga 2024 (2404.18796); Wataoka 2024 (2410.21819) |`,
     `| C3 self-pref uplift | selfPreferenceUplift   | —    | ${fmt(uplift)} | — | Wataoka 2024 (2410.21819) |`,
     `| Validity            | humanAgreement         | —    | ${fmt(ha)} | — (${haNote} vs 0.80) | Zheng 2023 (2306.05685) |`,

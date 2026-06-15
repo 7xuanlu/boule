@@ -1,6 +1,6 @@
 # boule
 
-**A lean, research-backed multi-LLM council with the judge-bias controls that no other open-source council implements.**
+**A lean, research-backed multi-LLM council with bias-aware judging controls — position-swap, verbosity-normalization, and a stake-free judge — absent from every OSS council we audited (6 of 6).**
 
 > Status: **v1 implemented** — plugin scaffold, one `/boule` skill with three modes (default / consensus / adversarial), the three judge-bias controls, member-isolation + contamination gate, and a node-tested core (`node --test`) with an eval harness (`node eval/run.mjs --smoke`). Live-session smokes (plugin install, `/boule` invocation, the multi-line `$ARGUMENTS` → `--file` decision) are pending before first release.
 
@@ -39,7 +39,7 @@ step as a measurable, debiased procedure rather than a single prompt. Two design
    footprint, no persona theater. See the footprint analysis in `docs/findings.md`.
 
 Leanness alone is not a differentiator (a lean tier already exists). The defensible
-position is **lean + the three verified bias controls as the headline feature.**
+position is **lean + the three research-grounded bias controls as the headline feature.**
 
 ## What proves it
 
@@ -50,11 +50,11 @@ and human-agreement %.
 
 ## Install
 
-This repo is the plugin itself. Add the marketplace and install in one pass:
+Install from the `7xuanlu/claude-plugins` catalog marketplace:
 
 ```shell
-/plugin marketplace add 7xuanlu/boule
-/plugin install boule@boule
+/plugin marketplace add 7xuanlu/claude-plugins
+/plugin install boule@7xuanlu
 ```
 
 `/boule` is a single user-invoked skill (not model-triggered). Claude will not call it automatically; you invoke it explicitly.
@@ -105,6 +105,28 @@ node --test
 ```
 
 **Open dependency:** the eval harness requires MT-Bench label files locally. Until the dataset is present, the harness cannot run end-to-end. See [`eval/datasets/README.md`](eval/datasets/README.md). Benchmark numbers are not reported here because the full eval has not been run on real data; see `eval/results/` after running.
+
+## Limitations & roadmap
+
+The three controls are **adapted** from LLM-eval research (MT-Bench, AlpacaEval, PoLL),
+where they were validated as large-N statistical procedures over labelled benchmarks. A
+single-shot council is a different setting, so the current implementations are bias-*aware*
+heuristics whose efficacy here is what the eval harness is built to measure — not yet a
+proven transfer. Two are honest about their current strength:
+
+- **Position-swap — partial; firm next step.** The judge currently sees **one**
+  counterbalanced ordering per run (deterministic by content nonce), which varies order
+  *across* runs but does not yet debias a *single* verdict. **Planned:** true
+  swap-and-average — judge both orderings and reconcile (tie when they disagree), matching
+  MT-Bench's method, so each individual recommendation is order-debiased.
+- **Verbosity-normalization — prompt-level mitigation.** Implemented as a judge instruction
+  to ignore length/polish, not AlpacaEval's statistical length-controlled regression. It
+  reduces, but does not provably remove, the length confound.
+- **Stake-free judge — structural.** The synthesizer authored no candidate; this transfers
+  cleanly from PoLL and holds by construction.
+
+Benchmark numbers are not yet reported — the eval (`eval/run.mjs`) needs real MT-Bench
+labels before the controls can be shown to help in this setting.
 
 ## Docs
 

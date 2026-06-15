@@ -5,7 +5,7 @@ import { join } from 'node:path'
 
 // Each embedded core function must match the canonical lib byte-for-byte (no silent drift).
 const lib = readFileSync('lib/council-core.mjs', 'utf8')
-const FUNCS = ['isContaminated', 'runNonce', 'counterbalance', 'codexCmd']
+const FUNCS = ['isContaminated', 'runNonce', 'counterbalance', 'codexCmd', 'geminiCmd']
 function bodyOf(src, name) {
   const m = src.match(new RegExp(`export function ${name}\\b[\\s\\S]*?\\n}`))
   return m ? m[0].replace(/^export /, '') : null

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The council-rigor eval uses an MT-Bench subset paired with length-confound answer pairs.
+The boule eval uses an MT-Bench subset paired with length-confound answer pairs.
 MT-Bench provides multi-turn questions and high-quality reference answers across eight categories
 (writing, roleplay, reasoning, math, coding, extraction, STEM, humanities).
 

@@ -1,10 +1,8 @@
-# council-rigor
+# boule
 
 **A lean, research-backed multi-LLM council with the judge-bias controls that no other open-source council implements.**
 
-> Status: **v1 implemented** — plugin scaffold, one `/council` skill with three modes (default / consensus / adversarial), the three judge-bias controls, member-isolation + contamination gate, and a node-tested core (`node --test`) with an eval harness (`node eval/run.mjs --smoke`). Live-session smokes (plugin install, `/council` invocation, the multi-line `$ARGUMENTS` → `--file` decision) are pending before first release.
->
-> Name (`council-rigor`) is still rename-able — it appears only in this title, the GitHub repo name, and the folder name; all prose refers to "this project".
+> Status: **v1 implemented** — plugin scaffold, one `/boule` skill with three modes (default / consensus / adversarial), the three judge-bias controls, member-isolation + contamination gate, and a node-tested core (`node --test`) with an eval harness (`node eval/run.mjs --smoke`). Live-session smokes (plugin install, `/boule` invocation, the multi-line `$ARGUMENTS` → `--file` decision) are pending before first release.
 
 ## Why this exists
 
@@ -55,19 +53,19 @@ and human-agreement %.
 This repo is the plugin itself. Add the marketplace and install in one pass:
 
 ```shell
-/plugin marketplace add 7xuanlu/council-rigor
-/plugin install council@council-rigor
+/plugin marketplace add 7xuanlu/boule
+/plugin install boule@boule
 ```
 
-`/council` is a single user-invoked skill (not model-triggered). Claude will not call it automatically; you invoke it explicitly.
+`/boule` is a single user-invoked skill (not model-triggered). Claude will not call it automatically; you invoke it explicitly.
 
 ## Usage
 
 ```shell
-/council <proposal>               # default poll  (~4 model calls)
-/council consensus <proposal>     # peer-ranked   (~7 model calls)
-/council adversarial <proposal>   # form-attack-defend-judge  (~13 model calls)
-/council help                     # print the mode/cost table
+/boule <proposal>               # default poll  (~4 model calls)
+/boule consensus <proposal>     # peer-ranked   (~7 model calls)
+/boule adversarial <proposal>   # form-attack-defend-judge  (~13 model calls)
+/boule help                     # print the mode/cost table
 ```
 
 **Modes:**
@@ -78,7 +76,7 @@ This repo is the plugin itself. Add the marketplace and install in one pass:
 | `consensus` | ~7 | 3 models propose, anonymized peer-rank, stake-free judge decides. |
 | `adversarial` | ~13 | Form → attack (anonymized) → defend/concede → stake-free judge. |
 
-The three bias controls (position-swap, verbosity-normalization, stake-free judge) are applied at the judging step in every mode. See [`skills/council/reference/bias-controls.md`](skills/council/reference/bias-controls.md).
+The three bias controls (position-swap, verbosity-normalization, stake-free judge) are applied at the judging step in every mode. See [`skills/boule/reference/bias-controls.md`](skills/boule/reference/bias-controls.md).
 
 **Contamination gate:** external members (codex/gemini) run in an isolated profile (auth-only `CODEX_HOME` + neutral cwd) with a content-derived run nonce. A contamination gate (`isContaminated` in `lib/council-core.mjs`) drops any off-topic verdict — detected as context-bleed from a prior session — before tallying. Dropped verdicts are reported; only clean verdicts reach the judge.
 

@@ -1,10 +1,10 @@
-# Council — consensus mode
+# Boule — consensus mode
 
 Invoke the `Workflow` tool with the script below, passing the user's PROPOSAL as `args` (a plain string). Run it directly; do not ask again.
 
 ```js
 export const meta = {
-  name: 'council-consensus',
+  name: 'boule-consensus',
   description: 'Consensus council: 3 propose, peer-rank anonymized answers, stake-free judge synthesizes',
   phases: [
     { title: 'Propose', detail: '3 models give independent verdicts (parallel)' },
@@ -129,7 +129,7 @@ const RANK_HINT = 'Return ONLY a JSON object (no prose, no fence) with keys: ran
 phase('Propose')
 const proposed = await parallel(members.map(m => async () => {
   const v = m.cli
-    ? await agent(conduitPrompt(m, formPrompt(m)), { label: m.id, phase: 'Propose', schema: VERDICT_SCHEMA, model: 'haiku', agentType: 'council-conduit' })
+    ? await agent(conduitPrompt(m, formPrompt(m)), { label: m.id, phase: 'Propose', schema: VERDICT_SCHEMA, model: 'haiku', agentType: 'boule-conduit' })
     : await agent(formPrompt(m), { label: m.id, phase: 'Propose', schema: VERDICT_SCHEMA })
   return { ...m, verdict: v }
 }))
@@ -158,7 +158,7 @@ ${JSON.stringify(shown, null, 2)}`
 const rankings = await parallel(live.map((m, i) => async () => {
   const shown = orderings[i % 2]
   return m.cli
-    ? await agent(conduitPrompt(m, rankPrompt(shown)), { label: `rank:${m.id}`, phase: 'Rank', schema: RANK_SCHEMA, model: 'haiku', agentType: 'council-conduit' })
+    ? await agent(conduitPrompt(m, rankPrompt(shown)), { label: `rank:${m.id}`, phase: 'Rank', schema: RANK_SCHEMA, model: 'haiku', agentType: 'boule-conduit' })
     : await agent(rankPrompt(shown), { label: `rank:${m.id}`, phase: 'Rank', schema: RANK_SCHEMA })
 }))
 
@@ -183,7 +183,7 @@ ${JSON.stringify(candidates, null, 2)}
 
 PEER-RANK TALLY (Borda points, higher = ranked better by peers):
 ${JSON.stringify(borda, null, 2)}`
-const decision = await agent(judgePrompt, { label: 'judge', phase: 'Judge', schema: JUDGE_SCHEMA, agentType: 'council-judge' })
+const decision = await agent(judgePrompt, { label: 'judge', phase: 'Judge', schema: JUDGE_SCHEMA, agentType: 'boule-judge' })
 
 return {
   mode: 'consensus',

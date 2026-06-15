@@ -13,7 +13,7 @@ function extractScript(md) {
   return m ? m[1] : null
 }
 test('every mode script is valid JS', () => {
-  const dir = 'skills/council/modes'
+  const dir = 'skills/boule/modes'
   for (const f of readdirSync(dir).filter(f => f.endsWith('.md'))) {
     const js = extractScript(readFileSync(join(dir, f), 'utf8'))
     if (js === null) continue

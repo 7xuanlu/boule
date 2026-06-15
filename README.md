@@ -2,12 +2,9 @@
 
 **A lean, research-backed multi-LLM council with the judge-bias controls that no other open-source council implements.**
 
-> Status: **design / docs-first** (pre-implementation). This repo currently holds the
-> competitive landscape, an adversarially-verified gap analysis, a verified research
-> bibliography, and an evaluation plan. Implementation follows the spec in `docs/`.
+> Status: **v1 implemented** — plugin scaffold, one `/council` skill with three modes (default / consensus / adversarial), the three judge-bias controls, member-isolation + contamination gate, and a node-tested core (`node --test`) with an eval harness (`node eval/run.mjs --smoke`). Live-session smokes (plugin install, `/council` invocation, the multi-line `$ARGUMENTS` → `--file` decision) are pending before first release.
 >
-> Name (`council-rigor`) is an **ad-hoc placeholder** — rename freely. It appears only in
-> this title, the GitHub repo name, and the folder name; all prose refers to "this project".
+> Name (`council-rigor`) is still rename-able — it appears only in this title, the GitHub repo name, and the folder name; all prose refers to "this project".
 
 ## Why this exists
 
@@ -52,6 +49,64 @@ Bias controls are only credible if measured. `docs/eval-plan.md` specifies a
 benchmark — borrowed directly from the papers above — to demonstrate each control helps:
 position-consistency rate, length-controlled win-rate, panel-vs-single-judge bias delta,
 and human-agreement %.
+
+## Install
+
+This repo is the plugin itself. Add the marketplace and install in one pass:
+
+```shell
+/plugin marketplace add 7xuanlu/council-rigor
+/plugin install council@council-rigor
+```
+
+`/council` is a single user-invoked skill (not model-triggered). Claude will not call it automatically; you invoke it explicitly.
+
+## Usage
+
+```shell
+/council <proposal>               # default poll  (~4 model calls)
+/council consensus <proposal>     # peer-ranked   (~7 model calls)
+/council adversarial <proposal>   # form-attack-defend-judge  (~13 model calls)
+/council help                     # print the mode/cost table
+```
+
+**Modes:**
+
+| Mode | ~Model calls | What it does |
+|---|---|---|
+| `default` | ~4 | 3 models answer in parallel, then a stake-free judge synthesizes. |
+| `consensus` | ~7 | 3 models propose, anonymized peer-rank, stake-free judge decides. |
+| `adversarial` | ~13 | Form → attack (anonymized) → defend/concede → stake-free judge. |
+
+The three bias controls (position-swap, verbosity-normalization, stake-free judge) are applied at the judging step in every mode. See [`skills/council/reference/bias-controls.md`](skills/council/reference/bias-controls.md).
+
+**Contamination gate:** external members (codex/gemini) run in an isolated profile (auth-only `CODEX_HOME` + neutral cwd) with a content-derived run nonce. A contamination gate (`isContaminated` in `lib/council-core.mjs`) drops any off-topic verdict — detected as context-bleed from a prior session — before tallying. Dropped verdicts are reported; only clean verdicts reach the judge.
+
+## Eval
+
+Controls are only credible if measured. `eval/run.mjs` implements a three-control off-vs-on experiment against a reused MT-Bench label subset:
+
+| Metric | What is measured |
+|---|---|
+| Position-consistency rate | Fraction of pairs where verdict is stable across both counterbalanced orderings |
+| Length-controlled win-rate | Win-rate after residualizing out answer-length confound |
+| Panel-vs-single bias delta | Mean bias score under single-model judge minus panel judge |
+| Self-preference uplift | Win-rate uplift when the judge is also a council member |
+| Human-agreement | Fraction of judgments matching published MT-Bench human labels (bar: >0.80) |
+
+Run the smoke test (writes `eval/results/smoke.md`):
+
+```shell
+node eval/run.mjs --smoke
+```
+
+Run the test suite:
+
+```shell
+node --test
+```
+
+**Open dependency:** the eval harness requires MT-Bench label files locally. Until the dataset is present, the harness cannot run end-to-end. See [`eval/datasets/README.md`](eval/datasets/README.md). Benchmark numbers are not reported here because the full eval has not been run on real data; see `eval/results/` after running.
 
 ## Docs
 

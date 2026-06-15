@@ -24,7 +24,6 @@ expensive adversarial flow and cross-host portability are explicit non-goals (§
 - Two modes: **default** (cheap parallel poll) and **consensus** (anonymized peer-rank).
 - The three bias controls — **position-swap, verbosity-norm, stake-free judge** — applied
   to the judging/synthesis step of both modes, with **tested defaults** (not raw switches).
-- A **worktree-grounding** path that is correctly scoped and egress-warned (§7).
 - A runnable **eval harness** (`eval/`) per `eval-plan.md`, proving controls #1 and #2 help.
 
 **Non-goals (deferred, recorded so intent survives)**
@@ -33,6 +32,10 @@ expensive adversarial flow and cross-host portability are explicit non-goals (§
 - ❌ **Cross-host portability / codex or gemini as the *invoker*** — v2+. Requires extracting
   orchestration out of the Workflow tool into a standalone `council` runner (§12). v1 keeps
   the **WHAT** (controls, prompts, eval) host-agnostic so v2 is a *re-host, not a rewrite*.
+- ❌ **Worktree-grounding (`--ground`)** — v2. v1 relies solely on **self-contained proposals
+  + "do not grep"** (proven: 0 false-positives). Grounding (cwd-pinned member reads of
+  uncommitted code) adds an egress dimension + per-CLI sandbox-scope unknowns (§7) — defer
+  until the core ships.
 - ❌ **MCP server** — v2+; `pal-mcp-server` already owns the portable-tool niche.
 - ❌ **Model-triggered invocation** — the tool is explicitly user-initiated (it spends real
   tokens); `disable-model-invocation: true` is intentional, not an oversight.
@@ -74,7 +77,6 @@ dominated by model-call **tokens**, reported to the user per §10.
 /council <proposal>                  default = parallel poll        (~4 calls)
 /council consensus <proposal>        anonymized peer-rank synth     (~7 calls)
 /council help                        list modes + cost + flags
-/council <proposal> --ground         opt-in worktree visibility (§7), egress-warned
 /council consensus <proposal> --lenses a,b,c   per-member focus hints (not stances)
 ```
 
@@ -142,17 +144,18 @@ call; v1 default implementation = **one judge call seeing a counterbalanced orde
 the §5 call counts honest). `[impl-verify: confirm single-call counterbalancing is sufficient
 for the eval's position-consistency metric]`
 
-## 7. Worktree-grounding contract (`--ground`)
+## 7. Worktree handling (v1: self-contained only; `--ground` deferred to v2)
 
-The earlier "weird scope" failure: a member CLI ran with **cwd ≠ the active worktree**, so its
-greps hit the committed/main tree and falsely rejected uncommitted worktree code as
-"hallucinated." The fix is to **pin cwd to the resolved worktree**, never inherit it.
+**v1 ships only the self-contained path** — the zero-egress fix that already works; grounding
+is v2. The earlier "weird scope" failure: a member CLI ran with **cwd ≠ the active worktree**,
+so its greps hit the committed/main tree and falsely rejected uncommitted worktree code as
+"hallucinated." v1 sidesteps it by never letting members read files.
 
 ```
-DEFAULT (no flag): members read NOTHING — proposal must be self-contained, members told
-                   "do not grep; judge the logic." Zero egress. (Proven: 0 false-positives.)
+v1 DEFAULT (only path): members read NOTHING — proposal must be self-contained, members
+                   told "do not grep; judge the logic." Zero egress. (Proven: 0 false-positives.)
 
---ground:
+v2 --ground (deferred):
   1. resolve   git -C <session-cwd> rev-parse --show-toplevel  → <WT>
                (inside a worktree this returns the WORKTREE root, not the main repo)
                hardened: symlinks / nested repos / detached / missing .git → fall back to
@@ -163,7 +166,7 @@ DEFAULT (no flag): members read NOTHING — proposal must be self-contained, mem
                                          gemini --approval-mode plan (cwd=<WT>)
 ```
 
-**Scope guarantees**
+**Scope guarantees (v2 `--ground` contract)**
 
 | Requirement | Guarantee |
 |---|---|
@@ -176,7 +179,7 @@ DEFAULT (no flag): members read NOTHING — proposal must be self-contained, mem
 
 - **`conduit.md`** — pass-through relay to a member's own CLI; forwards JSON verbatim (light
   syntax repair only, never content substitution — substituting collapses cross-lab
-  diversity). Read-only, cwd-pinned (§7), cheap model tier.
+  diversity). Read-only, cheap model tier. (cwd-pinning for grounding = v2, §7.)
 - **`judge.md`** — stake-free synthesizer/judge: reads anonymized candidates, applies §6
   controls, authored no candidate. (Residual: still a Claude instance → shared-prior bias;
   v2 may rotate the judge seat to a non-participating model.)
@@ -208,8 +211,8 @@ detected, lead with that (lower assurance).
 
 - **Mode dispatch**: `$1` parsed correctly; unknown mode → `/council help`.
 - **Degradation**: 0/1 missing CLIs → correct abort / ≤2-member path.
-- **Grounding**: cwd resolves to the worktree root from inside a worktree; egress warning
-  fires; members cannot write; self-contained default reads nothing.
+- **Self-contained default**: members read nothing and are told not to grep (the v1
+  worktree-safety path). (`--ground` grounding tests are v2.)
 - **Controls**: position-swap counterbalancing present; verbosity-norm instruction present;
   synthesizer authored no candidate.
 - **Eval smoke**: harness runs control-off vs control-on and emits the metrics table.
@@ -236,7 +239,7 @@ v1 must **not** bake Workflow-specific assumptions into the prompt/control/eval 
 | D4 | Bias controls at every mode's judging step | ✅ accepted; eval-backed, tested defaults (§6, §9) |
 | D5 | v1 = default + consensus; defer MCP/adversarial | ✅ accepted |
 | D6 | Cheapest packaging = user-only skill | ✅ accepted; framed as standing-context footprint (§3) |
-| D7 | Resolve member cwd to invoking worktree | ✅ accepted as **opt-in + egress-warned + scoped** (§7) |
+| D7 | Resolve member cwd to invoking worktree | ✅ accepted in principle; **deferred to v2** — v1 = self-contained proposals only (§7) |
 
 **Council verdict:** approve-with-changes (medium), 3/3 unanimous, full panel. Changes #1–#5
 folded into §3, §7, §4, §6/§9, §10/§3 respectively. Off-target attacks (empirical-benchmark
@@ -244,8 +247,8 @@ strawman, dollar-billing misread of D6) were discounted by the stake-free judge.
 
 ## 14. Open questions / impl-verification flags
 
-- `[impl-verify]` per-CLI sandbox **read-scope** — does `codex -s read-only` / `gemini` hard-deny
-  reads above cwd, or only soft-default to it? (§7)
+- `[v2]` per-CLI sandbox **read-scope** (gates `--ground`) — does `codex -s read-only` / `gemini`
+  hard-deny reads above cwd, or only soft-default to it? (§7)
 - `[impl-verify]` single-call counterbalancing sufficient for the eval's position-consistency
   metric, or does it need two re-judgings? (§6)
 - `[open]` exact `modes/*.md` ↔ `SKILL.md` dispatch mechanism in a plugin skill (read-on-demand

@@ -1,11 +1,11 @@
 # boule
 
-*boule* (Greek βουλή, "council") was the citizens' council of ancient Athens. Here it is a council of LLMs.
-
-A lean multi-LLM council (Claude + Codex + Gemini). It applies three bias controls at the point the judge decides: position-swap, verbosity-normalization, and a stake-free judge. Each one maps to a peer-reviewed result and to a function in this repo.
-
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 ![status: v1, pre-release](https://img.shields.io/badge/status-v1%20pre--release-orange.svg)
+
+*boule* (Greek βουλή, "council") was the citizens' council of ancient Athens. Here it is a council of LLMs.
+
+A lean, research-backed LLM council (Claude + Codex + Gemini). Several models answer, then an impartial judge decides, with deliberate guards against the ways AI judges are known to slip: favoring whichever answer comes first, whichever is longest, or its own. Each guard traces to peer-reviewed work, and to a function in this repo.
 
 **Status:** v1, pre-release. The core is node-tested; no benchmark numbers are reported yet because the eval needs MT-Bench labels (see [Eval](#eval)). Treat the controls as bias-aware procedures under measurement, not proven transfers.
 

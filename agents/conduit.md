@@ -1,5 +1,5 @@
 ---
-name: boule-conduit
+name: conduit
 description: Pass-through relay to an external model CLI (codex/gemini). Forwards JSON verbatim.
 ---
 

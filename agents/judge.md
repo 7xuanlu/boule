@@ -1,5 +1,5 @@
 ---
-name: boule-judge
+name: judge
 description: Stake-free synthesizer/judge. Authored no candidate; applies the three bias controls.
 ---
 

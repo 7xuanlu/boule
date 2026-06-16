@@ -137,7 +137,7 @@ const RANK_HINT = 'Return ONLY a JSON object (no prose, no fence) with keys: ran
 phase('Propose')
 const proposed = await parallel(members.map(m => async () => {
   const v = m.cli
-    ? await agent(conduitPrompt(m, formPrompt(m)), { label: m.id, phase: 'Propose', schema: VERDICT_SCHEMA, model: 'haiku', agentType: 'boule-conduit' })
+    ? await agent(conduitPrompt(m, formPrompt(m)), { label: m.id, phase: 'Propose', schema: VERDICT_SCHEMA, model: 'haiku', agentType: 'boule:conduit' })
     : await agent(formPrompt(m), { label: m.id, phase: 'Propose', schema: VERDICT_SCHEMA })
   return { ...m, verdict: v }
 }))
@@ -166,7 +166,7 @@ ${JSON.stringify(shown, null, 2)}`
 const rankings = await parallel(live.map((m, i) => async () => {
   const shown = orderings[i % 2]
   return m.cli
-    ? await agent(conduitPrompt(m, rankPrompt(shown)), { label: `rank:${m.id}`, phase: 'Rank', schema: RANK_SCHEMA, model: 'haiku', agentType: 'boule-conduit' })
+    ? await agent(conduitPrompt(m, rankPrompt(shown)), { label: `rank:${m.id}`, phase: 'Rank', schema: RANK_SCHEMA, model: 'haiku', agentType: 'boule:conduit' })
     : await agent(rankPrompt(shown), { label: `rank:${m.id}`, phase: 'Rank', schema: RANK_SCHEMA })
 }))
 
@@ -195,8 +195,8 @@ ${JSON.stringify(shown, null, 2)}
 PEER-RANK TALLY (Borda points, higher = ranked better by peers):
 ${JSON.stringify(borda, null, 2)}`
 const [decFwd, decRev] = await parallel([
-  () => agent(judgePrompt(fwdC), { label: 'judge:fwd', phase: 'Judge', schema: JUDGE_SCHEMA, agentType: 'boule-judge' }),
-  () => agent(judgePrompt(revC), { label: 'judge:rev', phase: 'Judge', schema: JUDGE_SCHEMA, agentType: 'boule-judge' }),
+  () => agent(judgePrompt(fwdC), { label: 'judge:fwd', phase: 'Judge', schema: JUDGE_SCHEMA, agentType: 'boule:judge' }),
+  () => agent(judgePrompt(revC), { label: 'judge:rev', phase: 'Judge', schema: JUDGE_SCHEMA, agentType: 'boule:judge' }),
 ])
 const decision = reconcileSwap(decFwd, decRev)
 if (decision && decision.position_stable === false) log('judge verdict is position-sensitive (orderings disagreed) — flagged unstable, confidence capped')

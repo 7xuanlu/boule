@@ -125,7 +125,7 @@ ${externalPrompt}`
 phase('Poll')
 const polled = await parallel(members.map(m => async () => {
   const v = m.cli
-    ? await agent(conduitPrompt(m, formPrompt(m)), { label: m.id, phase: 'Poll', schema: VERDICT_SCHEMA, model: 'haiku', agentType: 'boule-conduit' })
+    ? await agent(conduitPrompt(m, formPrompt(m)), { label: m.id, phase: 'Poll', schema: VERDICT_SCHEMA, model: 'haiku', agentType: 'boule:conduit' })
     : await agent(formPrompt(m), { label: m.id, phase: 'Poll', schema: VERDICT_SCHEMA })
   return { ...m, verdict: v }
 }))
@@ -153,8 +153,8 @@ ${proposal}
 ANONYMIZED CANDIDATES (counterbalanced order):
 ${JSON.stringify(shown, null, 2)}`
 const [decFwd, decRev] = await parallel([
-  () => agent(judgePrompt(fwd), { label: 'judge:fwd', phase: 'Judge', schema: JUDGE_SCHEMA, agentType: 'boule-judge' }),
-  () => agent(judgePrompt(rev), { label: 'judge:rev', phase: 'Judge', schema: JUDGE_SCHEMA, agentType: 'boule-judge' }),
+  () => agent(judgePrompt(fwd), { label: 'judge:fwd', phase: 'Judge', schema: JUDGE_SCHEMA, agentType: 'boule:judge' }),
+  () => agent(judgePrompt(rev), { label: 'judge:rev', phase: 'Judge', schema: JUDGE_SCHEMA, agentType: 'boule:judge' }),
 ])
 const decision = reconcileSwap(decFwd, decRev)
 if (decision && decision.position_stable === false) log('judge verdict is position-sensitive (orderings disagreed) — flagged unstable, confidence capped')

@@ -134,6 +134,11 @@ The three controls are adapted from LLM-eval research, where they were validated
 
 **Caveat for the adversarial mode.** Multi-agent debate can amplify bias rather than reduce it, while meta-judge aggregation resists it (Ma et al. 2025, [2505.19477](https://arxiv.org/abs/2505.19477)). boule's `adversarial` mode is a debate, so this is an open risk. The eval should test whether boule's debate amplifies or dampens the measured biases before that mode is recommended over the simpler ones.
 
+**Member set and execution.** Today the council is a fixed trio (Claude as the main loop, plus codex and gemini) run through the Workflow harness. Two roadmap directions:
+
+- **Model-agnostic, pluggable members.** Put council members behind a uniform interface so the panel is configurable rather than the hard-wired three: more vendor CLIs, and local or routed models (for example via ollama or an OpenRouter bridge). PoLL finds that a larger, more diverse panel reduces single-judge bias, so adding families is a quality lever, not just flexibility.
+- **Execution beyond Workflow.** Decouple the council logic from the Workflow tool so boule can run through other Claude Code execution paths, not only Workflow-orchestrated runs.
+
 Next: obtain MT-Bench labels, run the full eval, publish the off-vs-on table for all three controls. Then test the adversarial mode for bias amplification.
 
 ## Contributing

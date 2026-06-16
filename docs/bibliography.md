@@ -86,6 +86,52 @@ This bibliography backs the three controls in [`findings.md`](findings.md):
 
 ---
 
+## Recent work (2024-2026): wider taxonomy and panel cautions
+
+These postdate most of the citations above and were each verified against arXiv on 2026-06-15. They are not controls boule implements today; they document the wider bias taxonomy and two risks specific to a multi-model panel. The roadmap in the README tracks them.
+
+### [ye2024calm] Justice or Prejudice? Quantifying Biases in LLM-as-a-Judge `[VERIFIED]`
+- Jiayi Ye, Yanbo Wang, Yue Huang, et al.
+- arXiv 2024: https://arxiv.org/abs/2410.02736
+- Quote: *"we identify 12 key potential biases and propose a new automated bias quantification framework-CALM"*
+- The canonical taxonomy. boule controls 3 of the 12 (position, verbosity, self-enhancement). The paper also names bandwagon, authority, sentiment, distraction, chain-of-thought, diversity, compassion-fade, fallacy-oversight, and refinement-aware.
+
+### [gu2024survey] A Survey on LLM-as-a-Judge `[VERIFIED]`
+- Jiawei Gu, Xuhui Jiang, Zhichao Shi, et al.
+- arXiv 2024: https://arxiv.org/abs/2411.15594
+- Quote: *"We explore strategies to enhance reliability, including improving consistency, mitigating biases, and adapting to diverse assessment scenarios."*
+- Reliability-focused field survey. Frames bias mitigation as one core lever.
+
+### [li2024survey] LLMs-as-Judges: A Comprehensive Survey on LLM-based Evaluation Methods `[VERIFIED]`
+- Haitao Li, Qian Dong, Junjie Chen, et al.
+- arXiv 2024: https://arxiv.org/abs/2412.05579
+- Quote: *"a comprehensive survey of the LLMs-as-judges paradigm from five key perspectives: Functionality, Methodology, Applications, Meta-evaluation, and Limitations."*
+- Largest survey. Bias discussion sits under its Meta-evaluation and Limitations axes.
+
+### [gao2025comm] Evaluating and Mitigating LLM-as-a-judge Bias in Communication Systems `[VERIFIED]`
+- Jiaxin Gao, Chen Chen, Yanwen Jia, et al.
+- arXiv 2025: https://arxiv.org/abs/2510.12462
+- Quote: *"encompassing 11 types of biases that cover both implicit and explicit forms"*
+- Independent corroboration of the double-digit bias count (11), with an explicit-vs-implicit split.
+
+### [li2025leakage] Preference Leakage: A Contamination Problem in LLM-as-a-judge `[VERIFIED]`
+- Dawei Li, Renliang Sun, Yue Huang, et al.
+- ICLR 2026: https://arxiv.org/abs/2502.01534
+- Quote: *"preference leakage, a contamination problem in LLM-as-a-judge caused by the relatedness between the synthetic data generators and LLM-based evaluators."*
+- A new bias specific to multi-model setups like boule. A judge favors a generator it is identical to, inherits from, or shares a family with. Distinct from self-preference. Motivates a family-disjointness check between the judge and the members.
+
+### [yang2025rbd] Any Large Language Model Can Be a Reliable Judge: Debiasing with a Reasoning-based Bias Detector `[VERIFIED]`
+- Haoyan Yang, Runxue Bao, Cao Xiao, et al.
+- NeurIPS 2025: https://arxiv.org/abs/2505.17100
+- Quote: *"Experimental results on 4 bias types--verbosity, position, bandwagon, and sentiment--evaluated using 8 LLM evaluators demonstrate RBD's strong effectiveness."*
+- Names bandwagon and sentiment as measurable targets and ships a plug-in detector boule could adapt as a further control.
+
+### [ma2025manyminds] Judging with Many Minds: Do More Perspectives Mean Less Prejudice? `[VERIFIED]`
+- Chiyu Ma, Enpei Zhang, Yilun Zhao, et al.
+- arXiv 2025: https://arxiv.org/abs/2505.19477
+- Quote: *"debate framework amplifies biases sharply after the initial debate"*; *"meta-judge approaches exhibit greater resistance."*
+- Caution for boule's adversarial (debate) mode: naive debate can amplify bias rather than reduce it, while meta-judge aggregation resists it. A design constraint, and a hypothesis the eval can test.
+
 ## Corrections carried from verification
 
 1. **PoLL** title is *"...Panel of **Diverse Models**"*, not "...Panel of LLM evaluators."

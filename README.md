@@ -80,11 +80,13 @@ Rationale and prompts: [`skills/boule/reference/bias-controls.md`](skills/boule/
 
 ## Research grounding
 
-Each control and each eval metric traces to a peer-reviewed result. Every citation below was checked against its arXiv primary source this pass; the full annotated list (10 papers, with quotes) is in [`docs/bibliography.md`](docs/bibliography.md).
+Each control and each eval metric traces to a peer-reviewed result. Every citation below was checked against its arXiv primary source this pass; the full annotated list (17 papers, with quotes) is in [`docs/bibliography.md`](docs/bibliography.md).
 
 - **Position / order bias:** Zheng 2023 ([2306.05685](https://arxiv.org/abs/2306.05685)), Wang 2023 ([2305.17926](https://arxiv.org/abs/2305.17926)), Shi 2024 ([2406.07791](https://arxiv.org/abs/2406.07791)).
 - **Verbosity / length bias:** Dubois 2024 ([2404.04475](https://arxiv.org/abs/2404.04475)), Feuer 2024 ([2409.15268](https://arxiv.org/abs/2409.15268)).
 - **Self-preference / single-judge bias:** Verga 2024 ([2404.18796](https://arxiv.org/abs/2404.18796)), Wataoka 2024 ([2410.21819](https://arxiv.org/abs/2410.21819)).
+
+The field documents a wider set of judge biases, roughly 11 to 12 distinct types (Ye et al. 2024, the CALM taxonomy, [2410.02736](https://arxiv.org/abs/2410.02736); corroborated at 11 by Gao et al. 2025, [2510.12462](https://arxiv.org/abs/2510.12462)). boule ships the three with the most validated and directly implementable debiasing methods. The rest, plus two risks specific to a multi-model panel, are tracked in [Limitations & roadmap](#limitations--roadmap).
 
 ## How it compares
 
@@ -125,7 +127,14 @@ The three controls are adapted from LLM-eval research, where they were validated
 - **Verbosity-normalization.** Prompt-level only today. The statistical length regression from Dubois exists in the eval but is not yet applied inside the judging loop.
 - **Stake-free judge.** Structural and holds by construction. The natural next step is a small cross-family judge panel (PoLL), not just a single non-participant judge.
 
-Next: obtain MT-Bench labels, run the full eval, publish the off-vs-on table for all three controls.
+**Beyond the three controls.** The literature names around a dozen judge biases (Ye et al. 2024). Candidates boule does not yet control, with sources:
+
+- **Preference leakage** (Li et al. 2025, [2502.01534](https://arxiv.org/abs/2502.01534), ICLR 2026). A judge favors a model it is identical to, inherits from, or shares a family with. This is specific to multi-model panels like boule's and is distinct from self-preference. A family-disjointness check between the judge and the members would guard against it.
+- **Bandwagon and sentiment bias** (Yang et al. 2025, [2505.17100](https://arxiv.org/abs/2505.17100), NeurIPS 2025). Both are measurable, and the paper ships a plug-in detector that boule could adapt.
+
+**Caveat for the adversarial mode.** Multi-agent debate can amplify bias rather than reduce it, while meta-judge aggregation resists it (Ma et al. 2025, [2505.19477](https://arxiv.org/abs/2505.19477)). boule's `adversarial` mode is a debate, so this is an open risk. The eval should test whether boule's debate amplifies or dampens the measured biases before that mode is recommended over the simpler ones.
+
+Next: obtain MT-Bench labels, run the full eval, publish the off-vs-on table for all three controls. Then test the adversarial mode for bias amplification.
 
 ## Contributing
 

@@ -113,3 +113,42 @@ test('geminiCmd runs read-only plan mode', () => {
   const g = geminiCmd('gemini-3.1-pro-preview', '/t/in.txt')
   assert.match(g, /--approval-mode plan/)
 })
+
+import { gateContamination } from '../lib/council-core.mjs'
+
+const ON = (id, claim) => ({ id, verdict: { key_claims: [claim], risks: [], unknowns: [] } })
+const BLEED = id => ({ id, verdict: { key_claims: ['x'],
+  risks: ['U-shape crossover', 'A-sonnet B-parity', 'N-power slope', 'Meter-B re-witness',
+          'capture-head undefined', 'B-full arm', 'SP-coordinator drift', 'cache-hit flattening'],
+  unknowns: [] } })
+
+test('gateContamination: a single flagged member (strict minority) is dropped', () => {
+  const members = [ON('claude', 'package the council plugin with bias controls'),
+                   ON('gemini', 'the council plugin keeps standing context low'),
+                   BLEED('codex')]
+  const { live, dropped, overridden } = gateContamination(members, PROPOSAL)
+  assert.deepEqual(dropped, ['codex'])
+  assert.equal(live.length, 2)
+  assert.equal(overridden, false)
+})
+test('gateContamination: majority flagged -> overridden, all kept (systematic FP)', () => {
+  const members = [ON('claude', 'the council plugin packages bias controls'), BLEED('gemini'), BLEED('codex')]
+  const { live, dropped, overridden, flagged } = gateContamination(members, PROPOSAL)
+  assert.equal(live.length, 3)
+  assert.deepEqual(dropped, [])
+  assert.equal(overridden, true)
+  assert.equal(flagged, 2)
+})
+test('gateContamination: prose/meta review (all low-overlap) is NOT dropped wholesale', () => {
+  const proposal = 'audit the boule readme; flag misleading claims and check clarity for a newcomer'
+  const meta = c => ({ key_claims: [c], risks: [], unknowns: [] })
+  const members = [
+    { id: 'claude', verdict: meta('the subtitle overstates novelty by implying universal absence') },
+    { id: 'gemini', verdict: meta('each citation maps onto a function in the codebase') },
+    { id: 'codex',  verdict: meta('the etymology sentence inverts the historical metaphor') },
+  ]
+  const { live, dropped, overridden } = gateContamination(members, proposal)
+  assert.equal(live.length, 3)
+  assert.deepEqual(dropped, [])
+  assert.equal(overridden, true)
+})

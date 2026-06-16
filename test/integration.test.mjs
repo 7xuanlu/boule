@@ -14,7 +14,7 @@ test('contaminated member is dropped; clean members synthesized', () => {
   assert.equal(live.length, 2)
 })
 
-test('two contaminated members leave <2 live -> degrade trigger', () => {
+test('majority flagged -> gate overrides itself (systematic FP), keeps all', () => {
   const proposal = 'should the council ship as a single skill with modes'
   const bleed = { key_claims: ['x'], risks: ['U-shape crossover', 'A-sonnet B-parity', 'N-power slope', 'Meter-B re-witness', 'capture-head undefined', 'B-full arm'], unknowns: ['SP-coordinator'] }
   const raw = [
@@ -22,8 +22,9 @@ test('two contaminated members leave <2 live -> degrade trigger', () => {
     { id: 'gemini', verdict: bleed },
     { id: 'codex',  verdict: bleed },
   ]
+  // 2 of 3 flagged: independent context-bleed at that rate is implausible, so the
+  // gate distrusts itself and keeps everyone rather than degrading the council.
   const { live, dropped } = runCouncilCore(proposal, raw)
-  assert.equal(live.length, 1)
-  assert.deepEqual(dropped, ['gemini', 'codex'])
-  // a mode would abort here because live.length < 2
+  assert.equal(live.length, 3)
+  assert.deepEqual(dropped, [])
 })

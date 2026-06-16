@@ -57,6 +57,14 @@ function isContaminated(verdict, proposal) {
   const txt = [...(verdict.key_claims || []), ...(verdict.risks || []), ...(verdict.unknowns || [])].join(' ')
   return _foreignCount(txt, propLower) >= 8 || _coverage(txt, propVocab) < 0.20
 }
+function gateContamination(members, proposal) {
+  const present = members.filter(m => m && m.verdict)
+  const flagged = present.filter(m => isContaminated(m.verdict, proposal))
+  if (flagged.length * 2 >= present.length)
+    return { live: present, dropped: [], overridden: flagged.length > 0, flagged: flagged.length }
+  const ids = new Set(flagged.map(m => m.id))
+  return { live: present.filter(m => !ids.has(m.id)), dropped: flagged.map(m => m.id), overridden: false, flagged: flagged.length }
+}
 function codexCmd(model, inFile, outFile) {
   return `CH="$(mktemp -d)"; cp "$HOME/.codex/auth.json" "$CH/" 2>/dev/null; ND="$(mktemp -d)"; ` +
     `( cd "$ND" && CODEX_HOME="$CH" codex exec -m ${model} -s read-only ` +
@@ -142,9 +150,9 @@ const proposed = await parallel(members.map(m => async () => {
   return { ...m, verdict: v }
 }))
 const scored = proposed.filter(Boolean).filter(m => m.verdict)
-const live = scored.filter(m => !isContaminated(m.verdict, proposal))
-const dropped = scored.filter(m => isContaminated(m.verdict, proposal)).map(m => m.id)
-if (dropped.length) log(`dropped contaminated member(s): ${dropped.join(', ')}`)
+const { live, dropped, overridden, flagged } = gateContamination(scored, proposal)
+if (overridden) log(`contamination gate flagged ${flagged}/${scored.length} members at once; likely a meta/prose review it is not calibrated for, keeping all (verify manually)`)
+else if (dropped.length) log(`dropped contaminated member(s): ${dropped.join(', ')}`)
 if (live.length < 2) {
   log(`only ${live.length} clean member(s) responded — aborting council`)
   return { error: 'insufficient clean council members', live: live.length, dropped }

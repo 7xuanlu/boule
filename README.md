@@ -155,7 +155,7 @@ Conventions: keep changes surgical and the footprint lean. The canonical bias-co
 ## Security & isolation
 
 - **Member isolation.** External members (`codex`, `gemini`) run in an isolated profile (auth-only `CODEX_HOME`, neutral cwd), so a council run cannot read or write your project state.
-- **Contamination gate.** `isContaminated` (in [`lib/council-core.mjs`](lib/council-core.mjs)) drops any verdict whose content does not track the proposal: too many foreign hyphenated terms, or too little shared vocabulary with the question, which is the signature of context-bleed from a prior session. A deterministic content-derived nonce (`runNonce`) tags each run. Dropped verdicts are reported; only clean verdicts reach the judge.
+- **Contamination gate.** `isContaminated` flags a verdict whose content does not track the proposal (too many foreign hyphenated terms, or too little shared vocabulary), the signature of context-bleed from a prior session. Because real bleed is independent per member, `gateContamination` drops flagged members only when they are a strict minority; if it flags half or more at once (a systematic false-positive, for example a prose or meta review whose critique vocabulary legitimately diverges) it keeps all members and warns instead of disabling the council. A content-derived nonce (`runNonce`) tags each run. Both functions live in [`lib/council-core.mjs`](lib/council-core.mjs); dropped verdicts are reported and only clean verdicts reach the judge.
 - Found a vulnerability? Please open a GitHub issue tagged `security`, or contact the maintainer before public disclosure.
 
 ## License

@@ -13,9 +13,10 @@ function extractScript(md) {
   return m ? m[1] : null
 }
 test('every mode script is valid JS', () => {
-  const dir = 'skills/boule/modes'
-  for (const f of readdirSync(dir).filter(f => f.endsWith('.md'))) {
-    const js = extractScript(readFileSync(join(dir, f), 'utf8'))
+  for (const d of readdirSync('skills', { withFileTypes: true }).filter(d => d.isDirectory())) {
+    const p = join('skills', d.name, 'SKILL.md')
+    let md; try { md = readFileSync(p, 'utf8') } catch { continue }
+    const js = extractScript(md)
     if (js === null) continue
     const wrapped = 'async function __wf(){\n' + js.replace('export const meta', 'const meta') + '\n}\n'
     const tmp = join(mkdtempSync(join(tmpdir(), 'wf-')), 'c.mjs')

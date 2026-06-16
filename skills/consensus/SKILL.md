@@ -1,18 +1,26 @@
-# Boule — default (poll) mode
+---
+name: consensus
+description: Boule consensus council. 3 models propose, peer-rank the anonymized answers, stake-free debiased judge decides. Run as /boule:consensus.
+disable-model-invocation: true
+argument-hint: "<proposal>"
+---
 
-Invoke the `Workflow` tool with the script below, passing the user's PROPOSAL as `args` (a plain string). The slash-command invocation is the opt-in for multi-agent orchestration — run it directly; do not ask again.
+# Boule consensus council
+
+Invoke the `Workflow` tool with the script below, passing the user's PROPOSAL as `args` (a plain string). Run it directly; do not ask again.
 
 ```js
 export const meta = {
-  name: 'boule-default',
-  description: 'Default poll council: 3 heterogeneous models answer once, stake-free judge synthesizes',
+  name: 'boule-consensus',
+  description: 'Consensus council: 3 propose, peer-rank anonymized answers, stake-free judge synthesizes',
   phases: [
-    { title: 'Poll',  detail: '3 models answer in parallel (independent, no cross-talk)' },
-    { title: 'Judge', detail: 'contamination filter + stake-free judge over BOTH counterbalanced orderings (swap-and-average)' },
+    { title: 'Propose', detail: '3 models give independent verdicts (parallel)' },
+    { title: 'Rank',    detail: 'each member peer-ranks the anonymized answers (counterbalanced order)' },
+    { title: 'Judge',   detail: 'Borda tally + stake-free judge over BOTH anonymized orderings (swap-and-average)' },
   ],
 }
 
-// Requested model IDs — stamped into the report (honest-by-request, NOT runtime-verified).
+// Requested model IDs, stamped into the report (honest-by-request, NOT runtime-verified).
 const MODELS = {
   claude: 'claude/main-loop',
   codex:  'gpt-5.5',
@@ -20,7 +28,7 @@ const MODELS = {
 }
 
 // ── Embedded canonical core (verbatim from lib/council-core.mjs, `export ` stripped). ──
-// Guarded byte-for-byte by test/embed-drift.test.mjs — DO NOT edit here; edit the lib.
+// Guarded byte-for-byte by test/embed-drift.test.mjs, DO NOT edit here; edit the lib.
 function runNonce(proposal) {
   const h = Array.from(String(proposal)).reduce((a, c) => ((a * 31 + c.charCodeAt(0)) >>> 0), 7)
   return 'council-' + h.toString(36)
@@ -111,7 +119,7 @@ const members = [
 ]
 
 const formPrompt = (m) =>
-`[${NONCE} — uniqueness marker for this run; ignore it as content] You are a rigorous, independent reviewer on a 3-member LLM council. Evaluate the PROPOSAL below ON ITS MERITS — give your honest verdict, key claims, risks, and unknowns. Do NOT grep the filesystem; judge the proposal's content as given. ${VERDICT_HINT} Set "model" to "${m.model}".
+`[${NONCE}, uniqueness marker for this run; ignore it as content] You are a rigorous, independent reviewer on a 3-member LLM council. Evaluate the PROPOSAL below ON ITS MERITS, give your honest verdict, key claims, risks, and unknowns. Do NOT grep the filesystem; judge the proposal's content as given. ${VERDICT_HINT} Set "model" to "${m.model}".
 
 PROPOSAL:
 ${proposal}`
@@ -130,47 +138,89 @@ EXTERNAL PROMPT:
 ${externalPrompt}`
 }
 
-phase('Poll')
-const polled = await parallel(members.map(m => async () => {
+const RANK_SCHEMA = {
+  type: 'object',
+  required: ['ranking', 'rationale'],
+  properties: {
+    ranking:   { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: 3 },
+    rationale: { type: 'string' },
+  },
+}
+const RANK_HINT = 'Return ONLY a JSON object (no prose, no fence) with keys: ranking (array of candidate id strings, best-first, e.g. ["cand-2","cand-1","cand-3"]), rationale (string).'
+
+// ── Phase: Propose (same independent verdicts as poll) ──
+phase('Propose')
+const proposed = await parallel(members.map(m => async () => {
   const v = m.cli
-    ? await agent(conduitPrompt(m, formPrompt(m)), { label: m.id, phase: 'Poll', schema: VERDICT_SCHEMA, model: 'haiku', agentType: 'boule:conduit' })
-    : await agent(formPrompt(m), { label: m.id, phase: 'Poll', schema: VERDICT_SCHEMA })
+    ? await agent(conduitPrompt(m, formPrompt(m)), { label: m.id, phase: 'Propose', schema: VERDICT_SCHEMA, model: 'haiku', agentType: 'boule:conduit' })
+    : await agent(formPrompt(m), { label: m.id, phase: 'Propose', schema: VERDICT_SCHEMA })
   return { ...m, verdict: v }
 }))
-
-const scored = polled.filter(Boolean).filter(m => m.verdict)
+const scored = proposed.filter(Boolean).filter(m => m.verdict)
 const { live, dropped, overridden, flagged } = gateContamination(scored, proposal)
 if (overridden) log(`contamination gate flagged ${flagged}/${scored.length} members at once; likely a meta/prose review it is not calibrated for, keeping all (verify manually)`)
 else if (dropped.length) log(`dropped contaminated member(s): ${dropped.join(', ')}`)
 if (live.length < 2) {
-  log(`only ${live.length} clean member(s) responded — aborting council`)
+  log(`only ${live.length} clean member(s) responded, aborting council`)
   return { error: 'insufficient clean council members', live: live.length, dropped }
 }
 
-phase('Judge')
-const anon = (v) => { const { model, ...rest } = v; return { ...rest, author: 'anonymous-candidate' } }
-// True swap-and-average position-swap: judge BOTH counterbalanced orderings, then reconcile
-// (agree -> stable; disagree -> position-sensitive, conservative verdict at low confidence).
-const [fwd, rev] = counterbalance(live.map(m => anon(m.verdict)))
-const judgePrompt = (shown) =>
-`You are an impartial JUDGE. You authored NONE of these candidate answers — you have no position to defend. Decide the council's recommendation from the evidence only. Apply the bias controls: POSITION-SWAP (candidates are in a counterbalanced order — judge on content, not slot), VERBOSITY-NORM (do NOT reward length or polish; weigh substance only), STAKE-FREE (identities hidden; you wrote none of these). ${JUDGE_HINT}
+// ── Phase: Rank (anonymized peer-rank; each ranker sees a counterbalanced order) ──
+phase('Rank')
+const anonCand = (v, i) => { const { model, ...rest } = v; return { id: `cand-${i + 1}`, ...rest } }
+const candidates = live.map((m, i) => anonCand(m.verdict, i))
+const orderings = counterbalance(candidates)
+const rankPrompt = (shown) =>
+`You are a member of an LLM council. Peer-rank the ANONYMIZED candidate verdicts below, best-first, by quality of reasoning and evidence. POSITION-SWAP: the candidates are shown in a counterbalanced order, rank on CONTENT, not slot. Ignore length and style; weigh substance only. Reference candidates by their "id". ${RANK_HINT}
 
 ORIGINAL PROPOSAL:
 ${proposal}
 
 ANONYMIZED CANDIDATES (counterbalanced order):
 ${JSON.stringify(shown, null, 2)}`
+const rankings = await parallel(live.map((m, i) => async () => {
+  const shown = orderings[i % 2]
+  return m.cli
+    ? await agent(conduitPrompt(m, rankPrompt(shown)), { label: `rank:${m.id}`, phase: 'Rank', schema: RANK_SCHEMA, model: 'haiku', agentType: 'boule:conduit' })
+    : await agent(rankPrompt(shown), { label: `rank:${m.id}`, phase: 'Rank', schema: RANK_SCHEMA })
+}))
+
+// Mechanical Borda tally over the anonymized rankings (order-independent; labels are stable).
+const borda = {}
+for (const c of candidates) borda[c.id] = 0
+for (const r of rankings.filter(Boolean)) {
+  const order = (r.ranking || []).filter(id => id in borda)
+  order.forEach((id, idx) => { borda[id] += (order.length - idx) })
+}
+
+// ── Phase: Judge (stake-free synth over the ranked, anonymized set) ──
+phase('Judge')
+// True swap-and-average: judge BOTH counterbalanced candidate orderings, then reconcile. The
+// Borda tally is order-independent (stable labels), so it is identical for both orderings.
+const [fwdC, revC] = counterbalance(candidates)
+const judgePrompt = (shown) =>
+`You are an impartial JUDGE. You authored NONE of these candidates, no position to defend. Synthesize the council's recommendation from the anonymized candidate verdicts and the peer-rank tally. Apply the bias controls: POSITION-SWAP (peer rankings were collected under counterbalanced ordering and the Borda tally is order-independent, judge on content, not slot), VERBOSITY-NORM (do NOT reward length or polish; substance only), STAKE-FREE (identities hidden; you wrote none). ${JUDGE_HINT}
+
+ORIGINAL PROPOSAL:
+${proposal}
+
+ANONYMIZED CANDIDATES:
+${JSON.stringify(shown, null, 2)}
+
+PEER-RANK TALLY (Borda points, higher = ranked better by peers):
+${JSON.stringify(borda, null, 2)}`
 const [decFwd, decRev] = await parallel([
-  () => agent(judgePrompt(fwd), { label: 'judge:fwd', phase: 'Judge', schema: JUDGE_SCHEMA, agentType: 'boule:judge' }),
-  () => agent(judgePrompt(rev), { label: 'judge:rev', phase: 'Judge', schema: JUDGE_SCHEMA, agentType: 'boule:judge' }),
+  () => agent(judgePrompt(fwdC), { label: 'judge:fwd', phase: 'Judge', schema: JUDGE_SCHEMA, agentType: 'boule:judge' }),
+  () => agent(judgePrompt(revC), { label: 'judge:rev', phase: 'Judge', schema: JUDGE_SCHEMA, agentType: 'boule:judge' }),
 ])
 const decision = reconcileSwap(decFwd, decRev)
-if (decision && decision.position_stable === false) log('judge verdict is position-sensitive (orderings disagreed) — flagged unstable, confidence capped')
+if (decision && decision.position_stable === false) log('judge verdict is position-sensitive (orderings disagreed), flagged unstable, confidence capped')
 
 return {
-  mode: 'default',
+  mode: 'consensus',
   recommendation: decision,
   position_stable: decision && decision.position_stable,
+  borda,
   members: live.map(m => ({ id: m.id, model: m.model, verdict: m.verdict.verdict, confidence: m.verdict.confidence })),
   dropped,
 }

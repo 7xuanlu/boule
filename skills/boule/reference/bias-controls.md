@@ -16,7 +16,7 @@ Sources: Dubois et al. 2024 (Length-Controlled AlpacaEval, arXiv:2404.04475); Fe
 
 ## Stake-free judge
 
-**Mechanism:** The synthesizer/judge is a structural non-participant — it authored none of the candidate answers and has no position to defend. Candidate identities are hidden. This eliminates self-preference bias, which arises when a judge evaluates its own outputs (lower perplexity → inflated preference).
+**Mechanism:** The synthesizer/judge is a structural non-participant, it authored none of the candidate answers and has no position to defend. Candidate identities are hidden. This eliminates self-preference bias, which arises when a judge evaluates its own outputs (lower perplexity → inflated preference).
 
 Sources: Verga et al. 2024 (PoLL, arXiv:2404.18796); Wataoka et al. 2024 (arXiv:2410.21819).
 

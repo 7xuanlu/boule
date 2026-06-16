@@ -16,7 +16,7 @@ design described in spec section 9.
 ## Open Dependency
 
 The exact availability and file paths of the MT-Bench label files must be confirmed when the
-dataset is downloaded. This is an open dependency — it is surfaced here explicitly rather than
+dataset is downloaded. This is an open dependency, it is surfaced here explicitly rather than
 hidden. Until the dataset is present locally, the eval harness cannot be run end-to-end.
 
 ## Generated Outputs

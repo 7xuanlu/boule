@@ -9,21 +9,6 @@ A lean multi-LLM council (Claude + Codex + Gemini). It applies three bias contro
 
 **Status:** v1, pre-release. The core is node-tested; no benchmark numbers are reported yet because the eval needs MT-Bench labels (see [Eval](#eval)). Treat the controls as bias-aware procedures under measurement, not proven transfers.
 
-## Contents
-
-- [What it is](#what-it-is)
-- [Quickstart](#quickstart)
-- [Modes](#modes)
-- [The three controls](#the-three-controls)
-- [Research grounding](#research-grounding)
-- [How it compares](#how-it-compares)
-- [Eval](#eval)
-- [Limitations & roadmap](#limitations--roadmap)
-- [Contributing](#contributing)
-- [Security & isolation](#security--isolation)
-- [License](#license)
-- [Acknowledgements](#acknowledgements)
-
 ## What it is
 
 "LLM council" tools, where several models propose, peer-review, and a chairman synthesizes, are a crowded open-source category as of mid-2026. The canonical reference, `karpathy/llm-council`, has over 20k stars (see [`docs/landscape.md`](docs/landscape.md)). Most share the same recipe and the same blind spot: they inherit the documented biases of LLM-as-a-judge (position, verbosity, self-preference) without correcting for them at the judging step.
@@ -45,24 +30,24 @@ Then ask the council:
 /boule Should we adopt event sourcing for the orders service?
 ```
 
-`/boule` is user-invoked only. Claude never calls it automatically.
+boule's commands are user-invoked only. Claude never calls them automatically.
 
-## Modes
+## Commands
 
 ```shell
-/boule <proposal>               # default poll                          (~5 model calls)
-/boule consensus <proposal>     # anonymized peer-rank                  (~8 model calls)
-/boule adversarial <proposal>   # form, attack, defend, judge           (~14 model calls)
-/boule help                     # print the mode/cost table
+/boule <proposal>             # poll (the default): 3 models answer once, judge synthesizes  (~5 model calls)
+/boule:consensus <proposal>   # 3 propose, peer-rank anonymized answers, judge decides       (~8 model calls)
+/boule:debate <proposal>      # form, attack, defend, judge                                  (~14 model calls)
+/boule:help                   # print the command/cost table
 ```
 
-| Mode | ~Model calls | Flow |
+| Command | ~Model calls | Flow |
 |---|---|---|
-| `default` | ~5 | 3 models answer in parallel, then a stake-free judge synthesizes (both orderings) |
-| `consensus` | ~8 | 3 models propose, peer-rank the anonymized answers, then a stake-free judge decides (both orderings) |
-| `adversarial` | ~14 | form, then attack (anonymized), then defend or concede, then a stake-free judge decides (both orderings) |
+| `/boule` (poll, the default) | ~5 | 3 models answer in parallel, then a stake-free judge synthesizes (both orderings) |
+| `/boule:consensus` | ~8 | 3 models propose, peer-rank the anonymized answers, then a stake-free judge decides (both orderings) |
+| `/boule:debate` | ~14 | form, then attack (anonymized), then defend or concede, then a stake-free judge decides (both orderings) |
 
-The three controls apply at the judging step in every mode. The judge call runs twice, once per counterbalanced ordering, and the two verdicts are reconciled (swap-and-average). That second judge call is why each count rose by one.
+`/boule <proposal>` runs the default poll; the heavier modes are their own commands. The three controls apply at the judging step in every command. The judge call runs twice, once per counterbalanced ordering, and the two verdicts are reconciled (swap-and-average). That second judge call is why each count rose by one.
 
 ## The three controls
 
@@ -132,14 +117,14 @@ The three controls are adapted from LLM-eval research, where they were validated
 - **Preference leakage** (Li et al. 2025, [2502.01534](https://arxiv.org/abs/2502.01534), ICLR 2026). A judge favors a model it is identical to, inherits from, or shares a family with. This is specific to multi-model panels like boule's and is distinct from self-preference. A family-disjointness check between the judge and the members would guard against it.
 - **Bandwagon and sentiment bias** (Yang et al. 2025, [2505.17100](https://arxiv.org/abs/2505.17100), NeurIPS 2025). Both are measurable, and the paper ships a plug-in detector that boule could adapt.
 
-**Caveat for the adversarial mode.** Multi-agent debate can amplify bias rather than reduce it, while meta-judge aggregation resists it (Ma et al. 2025, [2505.19477](https://arxiv.org/abs/2505.19477)). boule's `adversarial` mode is a debate, so this is an open risk. The eval should test whether boule's debate amplifies or dampens the measured biases before that mode is recommended over the simpler ones.
+**Caveat for the debate mode.** Multi-agent debate can amplify bias rather than reduce it, while meta-judge aggregation resists it (Ma et al. 2025, [2505.19477](https://arxiv.org/abs/2505.19477)). boule's `/boule:debate` command is a debate, so this is an open risk. The eval should test whether the debate amplifies or dampens the measured biases before that command is recommended over the simpler ones.
 
 **Member set and execution.** Today the council is a fixed trio (Claude as the main loop, plus codex and gemini) run through the Workflow harness. Two roadmap directions:
 
 - **Model-agnostic, pluggable members.** Put council members behind a uniform interface so the panel is configurable rather than the hard-wired three: more vendor CLIs, and local or routed models (for example via ollama or an OpenRouter bridge). PoLL finds that a larger, more diverse panel reduces single-judge bias, so adding families is a quality lever, not just flexibility.
 - **Execution beyond Workflow.** Decouple the council logic from the Workflow tool so boule can run through other Claude Code execution paths, not only Workflow-orchestrated runs.
 
-Next: obtain MT-Bench labels, run the full eval, publish the off-vs-on table for all three controls. Then test the adversarial mode for bias amplification.
+Next: obtain MT-Bench labels, run the full eval, publish the off-vs-on table for all three controls. Then test the debate mode for bias amplification.
 
 ## Contributing
 
@@ -150,7 +135,7 @@ node --test                 # all tests must pass
 node eval/run.mjs --smoke   # eval smoke must stay green
 ```
 
-Conventions: keep changes surgical and the footprint lean. The canonical bias-control functions live in [`lib/council-core.mjs`](lib/council-core.mjs) and are embedded byte-for-byte into the mode scripts. `test/embed-drift.test.mjs` enforces that the copies stay in sync, so edit the core and re-sync rather than editing a copy.
+Conventions: keep changes surgical and the footprint lean. The canonical bias-control functions live in [`lib/council-core.mjs`](lib/council-core.mjs) and are embedded byte-for-byte into each command's `SKILL.md` script. `test/embed-drift.test.mjs` enforces that the copies stay in sync, so edit the core and re-sync rather than editing a copy.
 
 ## Security & isolation
 

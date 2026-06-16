@@ -7,7 +7,7 @@ same day and tagged `[VERIFIED]`; they drift over time. Treat as a point-in-time
 
 "Multi-CLI / multi-model LLM council" is a **crowded** open-source category as of mid-2026,
 not a greenfield. An earlier internal assumption that this orchestration pattern was unique
-was **falsified** — at least 8 projects shell out to distinct vendor CLIs (`claude -p`,
+was **falsified**, at least 8 projects shell out to distinct vendor CLIs (`claude -p`,
 `codex exec`, `gemini -p`) and run a council / consensus / adversarial flow, plus a large
 MCP-based entrant. The differentiation opportunity is therefore **not** the orchestration
 pattern; it is the **rigor of the judging step** (see [`findings.md`](findings.md)).
@@ -16,14 +16,14 @@ pattern; it is the **rigor of the judging step** (see [`findings.md`](findings.m
 
 | Repo | ★ `[VERIFIED]` | License | Council mechanism |
 |---|---|---|---|
-| [BeehiveInnovations/pal-mcp-server](https://github.com/BeehiveInnovations/pal-mcp-server) (ex-"Zen MCP") | 11,599 | Apache-2.0¹ | `consensus` + `codereview` + `challenge` tools; hybrid — API-gateway core, `clink` bridges native CLIs |
+| [BeehiveInnovations/pal-mcp-server](https://github.com/BeehiveInnovations/pal-mcp-server) (ex-"Zen MCP") | 11,599 | Apache-2.0¹ | `consensus` + `codereview` + `challenge` tools; hybrid, API-gateway core, `clink` bridges native CLIs |
 | [nyldn/claude-octopus](https://github.com/nyldn/claude-octopus) | 3,590 | MIT | `/octo:council` 3/5/7-persona + quorum + critical-veto; `/octo:debate` |
-| [0xNyk/council-of-high-intelligence](https://github.com/0xNyk/council-of-high-intelligence) | 963 | — | 18 personas across `codex exec`/`gemini -p`/ollama; dissent quota, cross-exam |
-| [hex/claude-council](https://github.com/hex/claude-council) | 323 | — (Shell) | Prefers `codex`/`gemini` CLIs *over* their APIs; `BLOCK:` verdict gate |
+| [0xNyk/council-of-high-intelligence](https://github.com/0xNyk/council-of-high-intelligence) | 963 |, | 18 personas across `codex exec`/`gemini -p`/ollama; dissent quota, cross-exam |
+| [hex/claude-council](https://github.com/hex/claude-council) | 323 |, (Shell) | Prefers `codex`/`gemini` CLIs *over* their APIs; `BLOCK:` verdict gate |
 | [team-attention/agent-council](https://github.com/team-attention/agent-council) | 136 | MIT | Config lists `claude -p`/`codex exec`/`gemini`; chairman synthesis |
 | [yogirk/agent-council](https://github.com/yogirk/agent-council) | 84 | MIT | 4-stage Karpathy-on-CLIs: parallel → anonymized peer review → chairman → adversarial |
-| [heavy3-ai/code-audit](https://github.com/heavy3-ai/code-audit) | 44 | — | Multi-model consensus for plan/code/PR review |
-| [alecnielsen/adversarial-review](https://github.com/alecnielsen/adversarial-review) | 11 | — | claude + codex 3-phase adversarial loop |
+| [heavy3-ai/code-audit](https://github.com/heavy3-ai/code-audit) | 44 |, | Multi-model consensus for plan/code/PR review |
+| [alecnielsen/adversarial-review](https://github.com/alecnielsen/adversarial-review) | 11 |, | claude + codex 3-phase adversarial loop |
 | [DantesPeak85/the-council](https://github.com/DantesPeak85/the-council) | 2 | MIT | codex + gemini second opinions, read-only sandboxes |
 
 ¹ GitHub API classifies pal-mcp-server as `NOASSERTION`; its README explicitly states Apache-2.0.
@@ -38,14 +38,14 @@ pattern; it is the **rigor of the judging step** (see [`findings.md`](findings.m
 | [theerud/gemini-llm-council](https://github.com/theerud/gemini-llm-council) | 14 | MIT | Faithful Gemini-CLI port of Karpathy's llm-council |
 | [ngmeyer/council-review](https://github.com/ngmeyer/council-review) | 9 | MIT | Claude Code skill, 5 advisors, anonymous peer review |
 
-## Excluded — single-API gateways (not multi-CLI; routes all models through one endpoint)
+## Excluded, single-API gateways (not multi-CLI; routes all models through one endpoint)
 
-- [nesquikm/mcp-rubber-duck](https://github.com/nesquikm/mcp-rubber-duck) — 168★ — bridges OpenAI-compatible LLMs via one API.
-- [antonbabenko/deliberation](https://github.com/antonbabenko/deliberation) — 72★ — "arbiter-mediated consensus" routed through 400+ OpenRouter models.
+- [nesquikm/mcp-rubber-duck](https://github.com/nesquikm/mcp-rubber-duck), 168★, bridges OpenAI-compatible LLMs via one API.
+- [antonbabenko/deliberation](https://github.com/antonbabenko/deliberation), 72★, "arbiter-mediated consensus" routed through 400+ OpenRouter models.
 
 ## The judge-bias matrix (the actual differentiator)
 
-Source-audited and adversarially verified — see [`findings.md`](findings.md) for file:line receipts.
+Source-audited and adversarially verified, see [`findings.md`](findings.md) for file:line receipts.
 
 | Project (★) | position-swap | verbosity-norm | stake-free judge |
 |---|---|---|---|
@@ -65,4 +65,4 @@ gap this project fills.
 ## Provenance
 
 - Star counts, licenses, last-push dates: GitHub REST API (`/repos/...`, `/repos/.../license`), fetched 2026-06-13.
-- Mechanism / bias-control claims: direct source inspection (README, SKILL.md, command scripts, config, prompt templates) — receipts in [`findings.md`](findings.md).
+- Mechanism / bias-control claims: direct source inspection (README, SKILL.md, command scripts, config, prompt templates), receipts in [`findings.md`](findings.md).

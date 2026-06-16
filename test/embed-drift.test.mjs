@@ -11,12 +11,17 @@ function bodyOf(src, name) {
   return m ? m[0].replace(/^export /, '') : null
 }
 test('mode scripts embed canonical core functions unchanged', () => {
-  for (const f of readdirSync('skills/boule/modes').filter(x => x.endsWith('.md'))) {
-    const md = readFileSync(join('skills/boule/modes', f), 'utf8')
+  const skillFiles = readdirSync('skills', { withFileTypes: true })
+    .filter(d => d.isDirectory())
+    .map(d => join('skills', d.name, 'SKILL.md'))
+    .filter(p => { try { return readFileSync(p, 'utf8').includes('export const meta') } catch { return false } })
+  assert.ok(skillFiles.length >= 3, `expected >=3 script-bearing skills, found ${skillFiles.length}`)
+  for (const p of skillFiles) {
+    const md = readFileSync(p, 'utf8')
     for (const fn of FUNCS) {
       const canon = bodyOf(lib, fn)
       assert.ok(canon, `lib missing ${fn}`)
-      assert.ok(md.includes(canon), `${f} drifted on ${fn}`)
+      assert.ok(md.includes(canon), `${p} drifted on ${fn}`)
     }
   }
 })

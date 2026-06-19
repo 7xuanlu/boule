@@ -79,7 +79,7 @@ function codexCmd(model, inFile, outFile) {
     `rc=$?; rm -rf "$CH" "$ND"; exit $rc`
 }
 function geminiCmd(model, inFile) {
-  return `agy --model "${model}" --sandbox -p "$(cat "${inFile}")" 2>/dev/null`
+  return `ND="$(mktemp -d)"; ( cd "$ND" && agy --model "${model}" --sandbox -p "$(cat "${inFile}")" 2>/dev/null ); rc=$?; rm -rf "$ND"; exit $rc`
 }
 
 // ── Orchestration ──

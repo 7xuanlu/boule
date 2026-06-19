@@ -94,13 +94,14 @@ test('codexCmd isolates CODEX_HOME + cwd and preserves auth', () => {
   assert.match(c, /model_reasoning_effort=xhigh/)
   assert.match(c, /--ephemeral/)
 })
-test('geminiCmd runs agy in read-only print mode', () => {
+test('geminiCmd jails agy in a neutral throwaway cwd under --sandbox', () => {
   const g = geminiCmd('Gemini 3.1 Pro (High)', '/t/in.txt')
-  assert.match(g, /^agy /)
-  assert.match(g, /--model "Gemini 3\.1 Pro \(High\)"/) // model name has spaces/parens, must stay quoted
-  assert.match(g, /--sandbox/)                          // read-only: terminal-restricted sandbox
-  assert.match(g, /-p /)
-  assert.doesNotMatch(g, /--dangerously-skip-permissions/) // read-only: never auto-approve writes
+  assert.match(g, /mktemp -d/)                          // neutral throwaway cwd, not the project
+  assert.match(g, /cd "\$ND" && agy --model "Gemini 3\.1 Pro \(High\)"/) // model quoted (spaces/parens), run in the jail
+  assert.match(g, /--sandbox/)                          // terminal / shell-exec restricted
+  assert.match(g, /-p /)                                // print mode -> JSON on stdout
+  assert.match(g, /rm -rf "\$ND"/)                      // clean up the jail afterward
+  assert.doesNotMatch(g, /--dangerously-skip-permissions/) // never auto-approve agy's write tool
 })
 
 import { gateContamination } from '../lib/council-core.mjs'

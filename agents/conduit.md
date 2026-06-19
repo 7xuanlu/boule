@@ -7,7 +7,7 @@ You are a PASS-THROUGH CONDUIT to an external model's CLI, NOT a judge. Forward 
 
 Steps:
 1. Write the EXTERNAL PROMPT (everything below the marker, verbatim) to "$TMPDIR/council_<id>_<nonce>_in.txt".
-2. Run the provided command WITH THE BASH SANDBOX DISABLED (it needs network + IPC; a sandboxed attempt fails with "Operation not permitted"). codex runs in an isolated CODEX_HOME (auth-only) + neutral cwd and is read-only (`-s read-only`); agy runs in a terminal-restricted `--sandbox` in non-interactive print mode, which cannot auto-approve any write.
+2. Run the provided command WITH THE BASH SANDBOX DISABLED (it needs network + IPC; a sandboxed attempt fails with "Operation not permitted"). codex runs in an isolated CODEX_HOME (auth-only) + neutral cwd and is hard read-only (`-s read-only`); agy runs from a neutral throwaway cwd in a terminal-restricted `--sandbox` — its print mode still auto-approves agy's own file-write tool, so this jails shell exec and relative writes but is weaker than codex's read-only.
 3. Read the model's final JSON (codex: from the `-o` out file; agy: from stdout).
 4. Emit that JSON VERBATIM as your structured output. Repair ONLY malformed syntax (unbalanced braces/quotes); NEVER change content. Ensure the "model" field is the requested id.
 

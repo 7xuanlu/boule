@@ -4,6 +4,7 @@
     ".": {
       "release-type": "simple",
       "package-name": "boule",
+      "include-component-in-tag": false,
       "extra-files": [
         { "type": "json", "path": ".claude-plugin/plugin.json", "jsonpath": "$.version" }
       ]

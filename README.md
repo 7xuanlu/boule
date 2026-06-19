@@ -17,7 +17,7 @@ boule's premise is that the judging step should be a debiased procedure, not a s
 
 ## Quickstart
 
-**Prerequisites.** boule's council members are Claude (the main loop) plus two external CLIs it shells out to: `codex` (OpenAI) and `gemini` (Google). Install and sign in to both first, following each tool's own install and auth docs. boule reuses their existing local authentication and never asks for keys itself.
+**Prerequisites.** boule's council members are Claude (the main loop) plus two external CLIs it shells out to: `codex` (OpenAI) and `agy` (Google Antigravity — the successor to the discontinued `gemini` individual CLI). Install and sign in to both first, following each tool's own install and auth docs. boule reuses their existing local authentication and never asks for keys itself.
 
 ```shell
 /plugin marketplace add 7xuanlu/claude-plugins
@@ -139,7 +139,7 @@ Conventions: keep changes surgical and the footprint lean. The canonical bias-co
 
 ## Security & isolation
 
-- **Member isolation.** External members (`codex`, `gemini`) run in an isolated profile (auth-only `CODEX_HOME`, neutral cwd), so a council run cannot read or write your project state.
+- **Member isolation.** External members run with reduced privileges: `codex` is hard read-only (`-s read-only`) in an isolated profile (auth-only `CODEX_HOME`, neutral cwd); `agy` runs from a neutral throwaway cwd under a terminal-restricted `--sandbox`. Caveat: agy's print mode still auto-approves its own file-write tool, so the agy member is best-effort-contained (shell exec and relative writes jailed) rather than hard read-only — a known gap tracked for hardening (e.g. an OS-level `sandbox-exec` jail).
 - **Contamination gate.** `isContaminated` flags a verdict whose content does not track the proposal (too many foreign hyphenated terms, or too little shared vocabulary), the signature of context-bleed from a prior session. Because real bleed is independent per member, `gateContamination` drops flagged members only when they are a strict minority; if it flags half or more at once (a systematic false-positive, for example a prose or meta review whose critique vocabulary legitimately diverges) it keeps all members and warns instead of disabling the council. A content-derived nonce (`runNonce`) tags each run. Both functions live in [`lib/council-core.mjs`](lib/council-core.mjs); dropped verdicts are reported and only clean verdicts reach the judge.
 - Found a vulnerability? Please open a GitHub issue tagged `security`, or contact the maintainer before public disclosure.
 

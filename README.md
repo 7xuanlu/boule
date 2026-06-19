@@ -17,7 +17,7 @@ boule's premise is that the judging step should be a debiased procedure, not a s
 
 ## Quickstart
 
-**Prerequisites.** boule's council members are Claude (the main loop) plus two external CLIs it shells out to: `codex` (OpenAI) and `gemini` (Google). Install and sign in to both first, following each tool's own install and auth docs. boule reuses their existing local authentication and never asks for keys itself.
+**Prerequisites.** boule's council members are Claude (the main loop) plus two external CLIs it shells out to: `codex` (OpenAI) and `agy` (Google Antigravity — the successor to the discontinued `gemini` individual CLI). Install and sign in to both first, following each tool's own install and auth docs. boule reuses their existing local authentication and never asks for keys itself.
 
 ```shell
 /plugin marketplace add 7xuanlu/claude-plugins

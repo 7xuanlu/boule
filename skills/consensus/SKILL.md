@@ -24,7 +24,7 @@ export const meta = {
 const MODELS = {
   claude: 'claude/main-loop',
   codex:  'gpt-5.5',
-  gemini: 'gemini-3.1-pro-preview',
+  gemini: 'Gemini 3.1 Pro (High)',
 }
 
 // ── Embedded canonical core (verbatim from lib/council-core.mjs, `export ` stripped). ──
@@ -79,7 +79,7 @@ function codexCmd(model, inFile, outFile) {
     `rc=$?; rm -rf "$CH" "$ND"; exit $rc`
 }
 function geminiCmd(model, inFile) {
-  return `gemini -m ${model} --approval-mode plan -p "$(cat "${inFile}")" 2>/dev/null`
+  return `agy --model "${model}" --sandbox -p "$(cat "${inFile}")" 2>/dev/null`
 }
 
 // ── Orchestration ──

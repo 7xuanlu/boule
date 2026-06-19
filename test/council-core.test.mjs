@@ -94,9 +94,13 @@ test('codexCmd isolates CODEX_HOME + cwd and preserves auth', () => {
   assert.match(c, /model_reasoning_effort=xhigh/)
   assert.match(c, /--ephemeral/)
 })
-test('geminiCmd runs read-only plan mode', () => {
-  const g = geminiCmd('gemini-3.1-pro-preview', '/t/in.txt')
-  assert.match(g, /--approval-mode plan/)
+test('geminiCmd runs agy in read-only print mode', () => {
+  const g = geminiCmd('Gemini 3.1 Pro (High)', '/t/in.txt')
+  assert.match(g, /^agy /)
+  assert.match(g, /--model "Gemini 3\.1 Pro \(High\)"/) // model name has spaces/parens, must stay quoted
+  assert.match(g, /--sandbox/)                          // read-only: terminal-restricted sandbox
+  assert.match(g, /-p /)
+  assert.doesNotMatch(g, /--dangerously-skip-permissions/) // read-only: never auto-approve writes
 })
 
 import { gateContamination } from '../lib/council-core.mjs'

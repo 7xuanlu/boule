@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert'
-import { isContaminated, _coverage, _foreignCount } from '../lib/council-core.mjs'
+import { isContaminated, _coverage, _words } from '../lib/council-core.mjs'
 
 const PROPOSAL = 'package a multi-llm council as a claude code plugin with bias controls position-swap consensus stake-free synthesis progressive disclosure'
 
@@ -17,6 +17,19 @@ test('gate passes an on-topic verdict', () => {
     risks: ['consensus and adversarial modes add complexity', 'stake-free synthesis is single point'],
     unknowns: ['which published eval proves the bias controls'] }
   assert.equal(isContaminated(clean, PROPOSAL), false)
+})
+// Regression: an on-topic verdict written in dense coined hyphenated compounds. The old gate
+// flagged it on the >=8-foreign-hyphenated rule (production-grade, insertion-ordered,
+// single-point, failure-prone, round-trip, context-heavy, coverage-weighted, well-defined)
+// even though it tracks the proposal. That was a style false-positive, not context-bleed.
+test('gate passes an on-topic verdict written in dense hyphenated compounds (style is not contamination)', () => {
+  const compoundProse = { key_claims: ['the council plugin stays production-grade with insertion-ordered bias controls'],
+    risks: ['stake-free synthesis is single-point and failure-prone', 'position-swap adds round-trip latency', 'progressive disclosure is context-heavy'],
+    unknowns: ['consensus on coverage-weighted scoring is well-defined'] }
+  assert.equal(isContaminated(compoundProse, PROPOSAL), false)
+})
+test('_words splits hyphenated compounds into component words and drops short tokens', () => {
+  assert.deepEqual(_words('state-mediated insertion-ordered a-b'), ['state', 'mediated', 'insertion', 'ordered'])
 })
 
 import { runNonce, counterbalance } from '../lib/council-core.mjs'

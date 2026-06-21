@@ -26,9 +26,12 @@ This spec generalizes Boule along three axes the user asked for, under one archi
    to council semantics. **The engine is application-neutral: boule (council) and
    `ultrapowers` (the sibling build-harness repo at `/Users/lucian/Repos/ultrapowers`) are
    both *consumers* of one engine core.** Bias controls live in boule's layer, never in the
-   core. (ultrapowers' internal flow per its skill description — plan→implement→review→fix
-   loop with routed implementers/critics — needs the same primitives; [unverified] against
-   its code.)
+   core. (✅ **verified 2026-06-21** against `ultrapowers/workflow/ultrapowers-development.js`
+   (851 lines): its plan→implement→review→fix loop, dynamic critic-added tasks, crash-resume,
+   and two-stage reviews are all **plain JS control flow over `member.invoke`/`phase`/`log`** —
+   no extra orchestration primitive needed. Two refinements it surfaced: (1) it's **fully
+   serial — uses `parallel` zero times** (that primitive is boule-only); (2) it reads an
+   optional **`budget`** global for a token ceiling — see the engine-scope note in §2 and O8.)
 
 **Terminology (resolves an earlier ambiguity):** two different things were both called
 "engine". They are distinct:
@@ -51,7 +54,9 @@ and pick the binding; allow an explicit user override.
 **Goals (v2)**
 - One **engine module**, byte-identical across hosts — no per-host forks of the flow logic.
 - A **`HostContext` interface** (`{ phase, parallel, log }`) + a **`Member` interface**
-  (`invoke(prompt, { schema }) → verdict`) that the engine consumes; everything host- or
+  (`invoke(prompt, { schema, model, label, phase }) → verdict` — verified: both boule and
+  ultrapowers pass model/label/phase *inline* per call, not just schema) that the engine
+  consumes; everything host- or
   vendor-specific lives behind these two seams.
 - **Two host bindings**: `cc` (maps the context to the native Workflow tool → native UI)
   and `generic` (plain Node: `Promise.all`, direct `spawn`/`fetch`, structured logging).
@@ -68,8 +73,11 @@ and pick the binding; allow an explicit user override.
   (imperative JS with real control flow). "Generic engine" = host/vendor-neutral, not a
   new declarative format.
 - ❌ Re-implementing all of CC's Workflow model. **Engine scope (decided):** the engine
-  exposes a **minimal primitive set** — `parallel(thunks)`, `member.invoke(prompt,{schema})`,
-  `phase(name)`, `log(msg)` — and flows are plain JS functions over them. Rationale:
+  exposes a **minimal primitive set** — `parallel(thunks)`,
+  `member.invoke(prompt,{schema,model,label,phase})`, `phase(name)`, `log(msg)`, and an
+  **optional `budget`** global (`budget.remaining()`; ultrapowers uses it for a token ceiling,
+  degrades to a max-task cap when absent — O8) — and flows are plain JS functions over them.
+  Verified: `parallel` is boule-only (ultrapowers is fully serial). Rationale:
   Boule's flows need **dynamic control flow** (poll's contamination-gate drop/abort;
   consensus/debate's dependent stages), so a flat "agent team" (fan-out → judge, no stages)
   is **insufficient**; but a full workflow framework is overkill. `phase()` is a **UI label
@@ -153,7 +161,7 @@ interface HostContext {
 interface Member {
   id: string
   model: string
-  invoke(prompt: string, opts: { schema }): Promise<object>  // structured verdict
+  invoke(prompt: string, opts: { schema, model?, label?, phase? }): Promise<object>  // structured verdict
 }
 ```
 The **host binding constructs the Member list**, wiring each `.invoke` correctly for that
@@ -261,6 +269,12 @@ CC-sandbox workaround, not a fundamental component.
 - **O7 — secrets/egress posture.** A headless runner managing provider keys + spawning
   network CLIs is a different security surface than CC's sandbox. Document the threat model
   before shipping `generic` as a recommended path.
+- **O8 — `budget` primitive (surfaced by /verify).** ultrapowers reads an optional `budget`
+  global (`budget.remaining()`) for a token ceiling. Decision: does the engine core expose
+  `budget` as an optional 5th primitive (CC provides it; generic computes spend from member
+  responses), or do apps self-manage a cap? ultrapowers degrades to a max-task cap when
+  `budget` is absent, so it is **optional, not blocking** — but it is the one need beyond the
+  4 primitives that verification found.
 
 ## 8. Suggested build order (TDD, mirrors v1's C1)
 

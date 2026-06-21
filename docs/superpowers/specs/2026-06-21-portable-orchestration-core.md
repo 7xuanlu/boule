@@ -51,6 +51,33 @@ and pick the binding; allow an explicit user override.
   new declarative format.
 - ❌ Dropping the CC native UI. Both paths ship; CC users keep phase cards / live agents.
 
+## 2.5 Research findings (2026-06-21) — the engine is NOT extractable
+
+Verified against official Claude Code / Agent SDK docs:
+
+- **CC's Workflow *runtime* is proprietary and internal to Claude Code — it cannot be
+  lifted out as our core.** The `Workflow` *tool* exists in the TS Agent SDK (v0.3.149+),
+  but it is only a **bridge** to CC's internal JS sandbox; the runtime that injects
+  `phase/agent/parallel/log` and drives the native UI is not a distributable library.
+  → **"Copy the CC workflow engine over as our core" is off the table.** Our core must be
+  *our own* engine; the generic host must **reimplement** the four primitives. This
+  vindicates the Seam 1 / Seam 2 design below — there is no shortcut around it.
+- The Agent SDK *does* give the substrate for the generic runner: **subagents, parallel
+  subagent execution, sessions — but "the execution loop is left to you."** That loop is
+  exactly our engine (§3).
+- **Schema (O4) is solvable with a public mechanism**: Workflow `agent({schema})` is
+  consistent with the API's **Structured Outputs** (`output_config.format`) and **strict
+  tool use** (`strict: true`, grammar-constrained). Both are available via the API/SDK, so
+  the generic path can enforce `VERDICT_SCHEMA`/`JUDGE_SCHEMA` identically.
+- **O1 (detection) and O2 (imports / indirect-call native UI) are NOT publicly
+  documented.** They are not answerable from docs — they require an **empirical test inside
+  a real CC Workflow run** (see §7). This converts O2 from a research question into a
+  one-off experiment.
+
+Consequence for "native" members: under the **generic** host there is no "claude
+main-loop." The `claude` member becomes an ordinary **`api` member** (Anthropic) or an
+Agent-SDK subagent. `kind: native` is meaningful **only** under the `cc` host.
+
 ## 3. Architecture — three layers, two seams
 
 ```
@@ -160,21 +187,24 @@ CC-sandbox workaround, not a fundamental component.
 
 ## 7. Open questions / decisions to make
 
-- **O1 — detection.** What does CC's Workflow tool actually expose in scope (globals? an env
-  var? a host object)? Global-sniffing (`typeof agent`) is the obvious probe but an explicit
-  marker would be sturdier. *Blocks auto-detect.*
-- **O2 — "verbatim" under CC.** Can the Workflow-executed JS `import` the engine module and
-  still drive the native UI from **indirect** `agent()`/`phase()` calls (i.e. called inside an
-  imported function, not at top level)? If **yes** → true single-source engine, embed-drift
-  test retired. If **no** (Workflow needs inline code) → "verbatim" means *build-time
-  generation* of SKILL.md from the engine, and embed-drift stays (now lib→generated, not
-  hand-copied). *This is the crux of the user's "verbatim reusable" ask.*
+- **O1 — detection.** *(not in docs — empirical)* What does CC's Workflow tool expose in
+  scope (globals? env var? host object)? Global-sniffing (`typeof agent`) is the obvious
+  probe but an explicit marker would be sturdier. *Blocks auto-detect.*
+- **O2 — "verbatim" under CC.** *(not in docs — empirical, run a probe Workflow)* The CC
+  Workflow runtime is **not** extractable (§2.5), so the engine is ours and the only question
+  is how it reaches the CC path. Can Workflow-executed JS `import` the engine module **and**
+  drive native UI from **indirect** `agent()`/`phase()` calls (inside an imported function)?
+  - **yes** → true single-source engine; embed-drift test retired.
+  - **no** (sandbox/top-level only) → "verbatim" = *build-time codegen* of SKILL.md from the
+    engine; embed-drift stays but becomes lib→generated (automated), not hand-copied.
+  Either way the **generic runner is unaffected** — it imports the engine directly. So we can
+  build the generic side first and settle O2 with a throwaway probe Workflow in parallel.
 - **O3 — judge under `generic`.** CC gives a native judge (claude main-loop) for free. The
   generic runner has no implicit model. Require an explicitly configured judge member +
   its API key? Default judge = first `api` member? *Affects zero-config UX off-CC.*
-- **O4 — schema parity.** Extract conduit's JSON parse/validate/repair into a shared util so
-  both paths enforce `VERDICT_SCHEMA`/`JUDGE_SCHEMA` identically (CC currently leans on the
-  tool's native validation).
+- **O4 — schema parity.** *(resolved in principle, §2.5)* Generic path enforces
+  `VERDICT_SCHEMA`/`JUDGE_SCHEMA` via the API's **Structured Outputs / strict tool use** for
+  API members, plus conduit's JSON parse+repair (extracted to a shared util) for CLI members.
 - **O5 — distribution shape.** Is the generic runner an npm-published `boule`/`council` CLI?
   A library? How do codex/gemini invoke it — plain shell command, or an MCP tool? (Ties to
   the v1 non-goal "MCP server — v2+".)

@@ -23,7 +23,24 @@ This spec generalizes Boule along three axes the user asked for, under one archi
 2. **Host portability** — the same orchestration runs under CC's Workflow tool *or* a
    standalone Node runner, so any harness (codex, gemini, CI) can invoke it.
 3. **Generic engine** — the flow logic is a reusable orchestration primitive, not welded
-   to council semantics.
+   to council semantics. **The engine is application-neutral: boule (council) and
+   `ultrapowers` (the sibling build-harness repo at `/Users/lucian/Repos/ultrapowers`) are
+   both *consumers* of one engine core.** Bias controls live in boule's layer, never in the
+   core. (ultrapowers' internal flow per its skill description — plan→implement→review→fix
+   loop with routed implementers/critics — needs the same primitives; [unverified] against
+   its code.)
+
+**Terminology (resolves an earlier ambiguity):** two different things were both called
+"engine". They are distinct:
+- **CC's Workflow *runtime*** = the executor that injects `phase/agent/parallel/log`.
+  Anthropic-internal, **not extractable** as a library. We *use* it by running inside CC; we
+  never vendor it. (Analogy: CPython — you run on it, you don't copy its source.)
+- **Our orchestration *code*** = the flow logic we author (poll/consensus/debate). **Ours to
+  copy anywhere.** Codegen inlines *this* into SKILL.md (O2: can't `import`, so paste). The
+  CC runtime then *executes* our inlined code. No contradiction with "can't extract CC's
+  runtime" — we copy our code, not theirs.
+- **What we actually implement:** only the **generic runtime** (the 4 primitives) + member
+  adapters + the codegen step. We never build a CC-style runtime.
 
 **The dual-host requirement (from the user):** keep CC's *native* Workflow UI when running
 inside CC, AND support a platform-agnostic path everywhere else. **Auto-detect** the host
@@ -99,7 +116,10 @@ Agent-SDK subagent. `kind: native` is meaningful **only** under the `cc` host.
 ## 3. Architecture — three layers, two seams
 
 ```
-┌─ Entry / host detection ───────────────────────────────────────────┐
+┌─ Apps (flows — application-specific) ──────────────────────────────┐
+│  boule: poll/consensus/debate + bias controls (council-core)        │
+│  ultrapowers: plan→implement→review→fix loop  ← second consumer     │  ← apps live HERE
+├─ Entry / host detection ───────────────────────────────────────────┤
 │  detect: Workflow globals present? → cc   else → generic            │
 │  override: --runtime / config                                       │
 ├─ Host binding (per host, thin) ────────────────────────────────────┤
@@ -107,12 +127,14 @@ Agent-SDK subagent. `kind: native` is meaningful **only** under the `cc` host.
 │           members: claude→agent(); cli→agent(conduit,{agentType})   │  ← native UI lights up
 │  generic: ctx.parallel=Promise.all(cap); ctx.log=structured         │
 │           members: cli→spawn() direct; api→fetch(); local→ollama    │  ← no conduit needed
-├─ Engine (verbatim, host-agnostic) ─────────────────────────────────┤
-│  runPoll/runConsensus/runDebate(ctx, members, judge, proposal)      │
-│  + lib/council-core.mjs (gate, counterbalance, reconcileSwap, …)    │
+├─ ENGINE CORE (application-neutral, host-agnostic) ─────────────────┤
+│  4 primitives: parallel · member.invoke · phase · log               │
+│  no council/bias logic here — that lives in the boule app layer     │
 ├─ Member adapters (reusable building blocks) ───────────────────────┤
 │  ClaudeSubagentMember · CliMember(codex,gemini) · ApiMember · Local │
 └────────────────────────────────────────────────────────────────────┘
+        boule flows + bias controls (council-core.mjs) sit in the APP layer,
+        NOT the core — so ultrapowers reuses the core without inheriting them.
 ```
 
 **Seam 1 — `HostContext`.** What the Workflow tool injects today, made injectable:
@@ -189,6 +211,11 @@ Replace the hard-wired trio with a declared panel (defaults preserve today's beh
   `api`/`cli` member. `kind: native` is only meaningful under a host that *has* a native model.
 - The contamination gate / abort-if-<2-clean logic is unchanged; it already operates on a
   dynamic member list.
+- **Same-model teams allowed; heterogeneous is the default.** The default panel stays the
+  diverse trio (`claude` + `codex` + `gemini`) — boule's diversity premise. But the config
+  permits a **homogeneous** team (e.g. `[claude, claude, claude]`, or `3× gpt`) for
+  ensemble/variance runs, optionally spread by temperature or prompt seed. The engine treats
+  members uniformly, so identical models are just members with the same `model` value.
 
 ## 6. What each host keeps / loses
 

@@ -40,8 +40,9 @@ and pick the binding; allow an explicit user override.
   and `generic` (plain Node: `Promise.all`, direct `spawn`/`fetch`, structured logging).
 - **Auto-detection** of the host with a `--runtime=native|generic|auto` override.
 - **Member registry/config** so the panel is declared, not hard-wired.
-- Kill the **embed-drift duplication**: the generic path *imports* the engine; the CC path
-  imports it too if the Workflow tool allows module imports (see §7 open question O2).
+- Tame the **embed-drift duplication**: the generic path *imports* the engine; the CC path
+  **cannot** import (O2 probe, §2.5) so it gets the engine **inlined by a build step** —
+  one source, mechanical copy, no hand-editing.
 
 **Non-goals (v2)**
 - ❌ Re-deriving the bias controls — they already live in pure JS (`lib/council-core.mjs`)
@@ -51,9 +52,9 @@ and pick the binding; allow an explicit user override.
   new declarative format.
 - ❌ Dropping the CC native UI. Both paths ship; CC users keep phase cards / live agents.
 
-## 2.5 Research findings (2026-06-21) — the engine is NOT extractable
+## 2.5 Findings (2026-06-21) — engine not extractable; CC path is codegen
 
-Verified against official Claude Code / Agent SDK docs:
+Verified against official Claude Code / Agent SDK docs **and a live Workflow probe**:
 
 - **CC's Workflow *runtime* is proprietary and internal to Claude Code — it cannot be
   lifted out as our core.** The `Workflow` *tool* exists in the TS Agent SDK (v0.3.149+),
@@ -69,10 +70,19 @@ Verified against official Claude Code / Agent SDK docs:
   consistent with the API's **Structured Outputs** (`output_config.format`) and **strict
   tool use** (`strict: true`, grammar-constrained). Both are available via the API/SDK, so
   the generic path can enforce `VERDICT_SCHEMA`/`JUDGE_SCHEMA` identically.
-- **O1 (detection) and O2 (imports / indirect-call native UI) are NOT publicly
-  documented.** They are not answerable from docs — they require an **empirical test inside
-  a real CC Workflow run** (see §7). This converts O2 from a research question into a
-  one-off experiment.
+- **O2 RESOLVED by probe (2026-06-21) → CODEGEN, not import.** A throwaway Workflow tested
+  every import form; all returned the same error: `"import() is not available in workflow
+  scripts."` (`require` is `undefined`; builtin / absolute / relative / `file://` all fail
+  identically). The CC path **cannot load the engine module at runtime** — the engine must be
+  **inlined into SKILL.md by a build step** (automating today's hand-copy that
+  `embed-drift.test.mjs` guards). The same probe confirmed **indirect calls work**: `log()`
+  called from inside a helper function ran fine, so wrapping the flow in functions is safe;
+  the only constraint is "no module system." The generic runner is unaffected — it imports
+  the engine normally.
+- **O1 (detection)** is now partly answered by the same probe: a Workflow script runs with
+  `phase/agent/parallel/log/args` as globals and **no** `require`/`import`. Auto-detect can
+  key on `typeof agent === 'function'` (present in CC, absent in plain Node); a sturdier
+  explicit marker is still TBD but not blocking.
 
 Consequence for "native" members: under the **generic** host there is no "claude
 main-loop." The `claude` member becomes an ordinary **`api` member** (Anthropic) or an
@@ -144,8 +154,9 @@ if runtime == 'auto':
 - **Override** for the case a CC user wants the generic path (e.g. to debug parity), or a
   forced-native check. Surfaced as `/boule --runtime=generic <proposal>` and a config key.
 
-> Detection mechanism is **O1** in §7 — must confirm exactly what CC exposes in the Workflow
-> scope and whether an env marker is more robust than global-sniffing.
+> Detection mechanism (**O1**) is probe-confirmed (§2.5): a Workflow script has
+> `agent/phase/parallel/log/args` as globals and no `require`/`import`. `typeof agent ===
+> 'function'` is a working signal; a sturdier explicit marker is a nice-to-have, not blocking.
 
 ## 5. Members as config
 
@@ -187,18 +198,16 @@ CC-sandbox workaround, not a fundamental component.
 
 ## 7. Open questions / decisions to make
 
-- **O1 — detection.** *(not in docs — empirical)* What does CC's Workflow tool expose in
-  scope (globals? env var? host object)? Global-sniffing (`typeof agent`) is the obvious
-  probe but an explicit marker would be sturdier. *Blocks auto-detect.*
-- **O2 — "verbatim" under CC.** *(not in docs — empirical, run a probe Workflow)* The CC
-  Workflow runtime is **not** extractable (§2.5), so the engine is ours and the only question
-  is how it reaches the CC path. Can Workflow-executed JS `import` the engine module **and**
-  drive native UI from **indirect** `agent()`/`phase()` calls (inside an imported function)?
-  - **yes** → true single-source engine; embed-drift test retired.
-  - **no** (sandbox/top-level only) → "verbatim" = *build-time codegen* of SKILL.md from the
-    engine; embed-drift stays but becomes lib→generated (automated), not hand-copied.
-  Either way the **generic runner is unaffected** — it imports the engine directly. So we can
-  build the generic side first and settle O2 with a throwaway probe Workflow in parallel.
+- **O1 — detection. ✅ RESOLVED (probe).** A Workflow script has `agent/phase/parallel/log/
+  args` as globals and no `require`/`import`. Auto-detect keys on `typeof agent === 'function'`
+  (CC) vs plain Node (generic). An explicit marker is a sturdiness nice-to-have, not blocking.
+- **O2 — "verbatim" under CC. ✅ RESOLVED (probe) → CODEGEN.** `import()`/`require` are
+  unavailable in Workflow scripts (error: `"import() is not available in workflow scripts."`,
+  every specifier), so the CC path **cannot** load the engine — it gets the engine **inlined
+  by a build step** (automated copy; embed-drift test stays but guards lib→generated, not a
+  hand-copy). Indirect `log()`/helper calls work, so wrapping flow in functions is safe. The
+  generic runner is unaffected (imports normally). *Single source preserved either way — the
+  CC copy is now mechanical.*
 - **O3 — judge under `generic`.** CC gives a native judge (claude main-loop) for free. The
   generic runner has no implicit model. Require an explicitly configured judge member +
   its API key? Default judge = first `api` member? *Affects zero-config UX off-CC.*
@@ -221,6 +230,6 @@ CC-sandbox workaround, not a fundamental component.
    behavior against current scripts (extend `embed-drift` / `scripts-syntax` tests).
 2. `generic` binding + `CliMember`/`ApiMember` adapters + schema util (O4). Make the eval
    harness (`eval/`) run the engine through the generic binding headlessly — instant CI proof.
-3. `cc` binding: re-express SKILL.md as a thin shim that builds a CC `ctx` + member list and
-   calls the engine (pending O2's verdict on import-vs-generate).
+3. `cc` binding: a **build step** inlines the engine into each SKILL.md (O2 → codegen) around
+   a thin shim that builds a CC `ctx` + member list and calls it; regenerate on engine change.
 4. Detection + override (§4). Member config (§5). Then open API/local members.

@@ -50,6 +50,14 @@ and pick the binding; allow an explicit user override.
 - ❌ A general DAG/YAML workflow language. The flow stays **code-as-orchestration**
   (imperative JS with real control flow). "Generic engine" = host/vendor-neutral, not a
   new declarative format.
+- ❌ Re-implementing all of CC's Workflow model. **Engine scope (decided):** the engine
+  exposes a **minimal primitive set** — `parallel(thunks)`, `member.invoke(prompt,{schema})`,
+  `phase(name)`, `log(msg)` — and flows are plain JS functions over them. Rationale:
+  Boule's flows need **dynamic control flow** (poll's contamination-gate drop/abort;
+  consensus/debate's dependent stages), so a flat "agent team" (fan-out → judge, no stages)
+  is **insufficient**; but a full workflow framework is overkill. `phase()` is a **UI label
+  only** — load-bearing for CC's native display, a no-op log line under `generic` — so
+  "phases vs non-phases" is a non-issue: keep it, the same source runs both places.
 - ❌ Dropping the CC native UI. Both paths ship; CC users keep phase cards / live agents.
 
 ## 2.5 Findings (2026-06-21) — engine not extractable; CC path is codegen
@@ -163,7 +171,8 @@ if runtime == 'auto':
 Replace the hard-wired trio with a declared panel (defaults preserve today's behavior):
 ```jsonc
 {
-  "judge": "claude",            // stake-free judge = the host's native model by default
+  "judge": "host",              // O3: stake-free judge = the INVOKING host's model by default
+                                // (CC → claude main-loop); override with any member id
   "members": [
     { "id": "claude", "kind": "native" },
     { "id": "codex",  "kind": "cli", "cmd": "codex",  "model": "gpt-5.5" },
@@ -174,9 +183,10 @@ Replace the hard-wired trio with a declared panel (defaults preserve today's beh
   ]
 }
 ```
-- `kind: native` is only valid under a host that *has* a native model (CC → claude
-  main-loop). Under `generic` with no native model, the judge must be an explicit `api`/`cli`
-  member (see §7 O3).
+- **Judge (O3, decided):** defaults to the **invoking host's own model** — CC forms the
+  council → CC's model judges (free, no extra config). Overridable to any member id. Off-CC
+  with no native model, `"judge": "host"` is invalid → the user must name a configured
+  `api`/`cli` member. `kind: native` is only meaningful under a host that *has* a native model.
 - The contamination gate / abort-if-<2-clean logic is unchanged; it already operates on a
   dynamic member list.
 
@@ -208,9 +218,11 @@ CC-sandbox workaround, not a fundamental component.
   hand-copy). Indirect `log()`/helper calls work, so wrapping flow in functions is safe. The
   generic runner is unaffected (imports normally). *Single source preserved either way — the
   CC copy is now mechanical.*
-- **O3 — judge under `generic`.** CC gives a native judge (claude main-loop) for free. The
-  generic runner has no implicit model. Require an explicitly configured judge member +
-  its API key? Default judge = first `api` member? *Affects zero-config UX off-CC.*
+- **O3 — judge under `generic`. ✅ DECIDED.** Judge defaults to the **invoking host's own
+  model** (`"judge": "host"`): CC forms the council → CC judges, zero extra config.
+  Overridable to any configured member id. Off-CC with no native model, the user must name an
+  explicit `api`/`cli` judge member (no silent fallback). Keeps the stake-free property (the
+  judge authored none of the candidate verdicts).
 - **O4 — schema parity.** *(resolved in principle, §2.5)* Generic path enforces
   `VERDICT_SCHEMA`/`JUDGE_SCHEMA` via the API's **Structured Outputs / strict tool use** for
   API members, plus conduit's JSON parse+repair (extracted to a shared util) for CLI members.

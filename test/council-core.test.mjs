@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert'
-import { isContaminated, _coverage, _foreignCount } from '../lib/council-core.mjs'
+import { isContaminated, _coverage, _words, _anchors } from '../lib/council-core.mjs'
 
 const PROPOSAL = 'package a multi-llm council as a claude code plugin with bias controls position-swap consensus stake-free synthesis progressive disclosure'
 
@@ -17,6 +17,35 @@ test('gate passes an on-topic verdict', () => {
     risks: ['consensus and adversarial modes add complexity', 'stake-free synthesis is single point'],
     unknowns: ['which published eval proves the bias controls'] }
   assert.equal(isContaminated(clean, PROPOSAL), false)
+})
+// Regression: an on-topic verdict written in dense coined hyphenated compounds. The old gate
+// flagged it on the >=8-foreign-hyphenated rule (production-grade, insertion-ordered,
+// single-point, failure-prone, round-trip, context-heavy, coverage-weighted, well-defined)
+// even though it tracks the proposal. That was a style false-positive, not context-bleed.
+test('gate passes an on-topic verdict written in dense hyphenated compounds (style is not contamination)', () => {
+  const compoundProse = { key_claims: ['the council plugin stays production-grade with insertion-ordered bias controls'],
+    risks: ['stake-free synthesis is single-point and failure-prone', 'position-swap adds round-trip latency', 'progressive disclosure is context-heavy'],
+    unknowns: ['consensus on coverage-weighted scoring is well-defined'] }
+  assert.equal(isContaminated(compoundProse, PROPOSAL), false)
+})
+// Regression: a long, thorough on-topic verdict against a terse proposal. Its coverage is
+// low (the analysis introduces lots of fresh words) but it clearly references the proposal,
+// so it must survive. Coverage alone would have dropped it (~0.12); the anchors signal saves it.
+test('gate passes a verbose on-topic verdict against a terse proposal (verbosity is not contamination)', () => {
+  const terse = 'should the council ship as a single skill with modes or as separate skills'
+  const verbose = { key_claims: ['a single mode-switched skill keeps the install surface lean and discovery-friendly'],
+    risks: ['mode-sprawl makes the skill hard-to-reason-about', 'separate skills cause copy-paste drift across near-identical scaffolds', 'mode-routing is error-prone'],
+    unknowns: ['whether mode-coupling hurts long-term maintainability'] }
+  assert.ok(_coverage([...verbose.key_claims, ...verbose.risks, ...verbose.unknowns].join(' '), new Set(_words(terse))) < 0.20) // coverage alone would flag it
+  assert.equal(isContaminated(verbose, terse), false)                                                                        // ...but it echoes proposal terms, so it survives
+})
+test('_words splits hyphenated compounds into component words and drops short tokens', () => {
+  assert.deepEqual(_words('state-mediated insertion-ordered a-b'), ['state', 'mediated', 'insertion', 'ordered'])
+})
+test('_anchors counts distinct proposal terms the verdict echoes', () => {
+  const propVocab = new Set(_words('council plugin bias controls consensus'))
+  assert.equal(_anchors('the council plugin keeps context low', propVocab), 2) // council, plugin
+  assert.equal(_anchors('unrelated backend latency experiment', propVocab), 0)
 })
 
 import { runNonce, counterbalance } from '../lib/council-core.mjs'

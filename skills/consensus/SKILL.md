@@ -44,25 +44,26 @@ function reconcileSwap(a, b) {
   const winner = RANK[a.recommendation] >= RANK[b.recommendation] ? a : b
   return { ...winner, confidence: 'low', position_stable: false }
 }
-function _foreignCount(txt, propLower) {
-  let n = 0
-  for (const x of new Set(txt.match(/\b[A-Za-z]+-[A-Za-z]+\b/g) || []))
-    if (x.length > 3 && propLower.indexOf(x.toLowerCase()) === -1) n++
-  return n
+function _words(s, min = 4) {
+  return (String(s).toLowerCase().match(/[a-z]+/g) || []).filter(w => w.length >= min)
 }
 function _coverage(txt, propVocab) {
-  const sv = new Set(txt.toLowerCase().match(/[a-z][a-z\-]{3,}/g) || [])
+  const sv = new Set(_words(txt))
   if (sv.size === 0) return 1
   let hit = 0
   for (const w of sv) if (propVocab.has(w)) hit++
   return hit / sv.size
 }
+function _anchors(txt, propVocab) {
+  let n = 0
+  for (const w of new Set(_words(txt))) if (propVocab.has(w)) n++
+  return n
+}
 function isContaminated(verdict, proposal) {
   if (verdict == null) return false
-  const propLower = String(proposal).toLowerCase()
-  const propVocab = new Set(propLower.match(/[a-z][a-z\-]{3,}/g) || [])
+  const propVocab = new Set(_words(proposal))
   const txt = [...(verdict.key_claims || []), ...(verdict.risks || []), ...(verdict.unknowns || [])].join(' ')
-  return _foreignCount(txt, propLower) >= 8 || _coverage(txt, propVocab) < 0.20
+  return _coverage(txt, propVocab) < 0.20 && _anchors(txt, propVocab) < 2
 }
 function gateContamination(members, proposal) {
   const present = members.filter(m => m && m.verdict)

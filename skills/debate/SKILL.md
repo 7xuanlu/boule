@@ -57,11 +57,16 @@ function _coverage(txt, propVocab) {
   for (const w of sv) if (propVocab.has(w)) hit++
   return hit / sv.size
 }
+function _anchors(txt, propVocab) {
+  let n = 0
+  for (const w of new Set(_words(txt))) if (propVocab.has(w)) n++
+  return n
+}
 function isContaminated(verdict, proposal) {
   if (verdict == null) return false
   const propVocab = new Set(_words(proposal))
   const txt = [...(verdict.key_claims || []), ...(verdict.risks || []), ...(verdict.unknowns || [])].join(' ')
-  return _coverage(txt, propVocab) < 0.20
+  return _coverage(txt, propVocab) < 0.20 && _anchors(txt, propVocab) < 2
 }
 function gateContamination(members, proposal) {
   const present = members.filter(m => m && m.verdict)

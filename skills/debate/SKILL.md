@@ -7,7 +7,7 @@ argument-hint: "<proposal>"
 
 # Boule debate council
 
-Invoke the `Workflow` tool with the script below, passing the user's PROPOSAL as `args` (a plain string, or `{ proposal, lenses?: string[] }`). The slash-command invocation is the opt-in for multi-agent orchestration, run it directly; do not ask again.
+Invoke the `Workflow` tool with the script below — pass the whole block as the `script` argument (inline). Do NOT use the `name:` parameter; the script's `meta.name` is an internal run label, not a registered workflow, so `name:` fails with `"not found"`. Pass the user's PROPOSAL as `args` (a plain string, or `{ proposal, lenses?: string[] }`). The slash-command invocation is the opt-in for multi-agent orchestration, run it directly; do not ask again.
 
 Three independent reasoners from three different labs (Claude main-loop, OpenAI Codex, Google Gemini) form parallel verdicts, then adversarially attack each other's reasoning (targets anonymized), then defend or concede, then a stake-free judge decides from the structured outcome.
 

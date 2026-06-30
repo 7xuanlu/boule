@@ -7,7 +7,7 @@ argument-hint: "<proposal>"
 
 # Boule poll council (default mode)
 
-Invoke the `Workflow` tool with the script below, passing the user's PROPOSAL as `args` (a plain string). The slash-command invocation is the opt-in for multi-agent orchestration, run it directly; do not ask again.
+Invoke the `Workflow` tool with the script below — pass the whole block as the `script` argument (inline). Do NOT use the `name:` parameter; the script's `meta.name` is an internal run label, not a registered workflow, so `name:` fails with `"not found"`. Pass the user's PROPOSAL as `args` (a plain string). The slash-command invocation is the opt-in for multi-agent orchestration, run it directly; do not ask again.
 
 ```js
 export const meta = {
